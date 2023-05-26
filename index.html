@@ -96,11 +96,37 @@
     <div class="e-content article-entry" itemprop="articleBody">
       
         <p>Hexo Blog will be a new state for me to show what I want to display for everyone!!!</p>
+<p>因为C中强制风格的转换可能会带来一些隐患，所以C++中提出了一组新的适用于不同场景的强制转换函数：</p>
+<ul>
+<li>static_cast</li>
+<li>dynamic_cast</li>
+<li>const_cast</li>
+<li>reinterpret_cast</li>
+</ul>
+<p><strong>static_cast</strong></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">static_cast</span>&lt;type&gt;(expression) </span><br></pre></td></tr></table></figure>
+<p>该运算符把expression转换为type类型，主要用于基本类型的转换。</p>
+<p>也可用于类层次之间的上行或下行转换。</p>
+<ul>
+<li>进行上行转换是安全的，即把派生类的指针转换为基类的。</li>
+<li>进行下行转换是不安全的，即把基类的指针转换为派生类的。<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 上行转换，派生类➡基类</span></span><br><span class="line">Derive* d = <span class="keyword">new</span> <span class="built_in">Derive</span>();</span><br><span class="line">Base *b = <span class="built_in">static_cast</span>&lt;Base*&gt;(d);</span><br><span class="line"></span><br><span class="line"><span class="comment">// 下行转换，基类➡派生类</span></span><br><span class="line">Base *b = <span class="keyword">new</span> <span class="built_in">Base</span>();</span><br><span class="line">Derive *d = <span class="built_in">static_cast</span>&lt;Derive*&gt;(b);</span><br></pre></td></tr></table></figure>
+<strong>dynamic_cast</strong><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">dynamic_cast</span>&lt;type&gt;(expression)</span><br></pre></td></tr></table></figure>
+主要用于类层次之间的上行转换或下行转换。<br>在进行上行转换时，dynamic_cast和static_cast的效果是一样的，但在下行转换时，dynamic_cast具有类型检查的功能，比stati_cast更安全。<br><strong>const_cast</strong><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">const_cast</span>&lt;type&gt;(expression)</span><br></pre></td></tr></table></figure>
+该运算符用来修改expression的const或volatile属性。注意：此处的type与expression的类型相同。<br><strong>reinterpret_cast</strong><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">reinterpret_cast</span>&lt;type&gt;(expression)</span><br></pre></td></tr></table></figure>
+该运算符可以把一个指针转换成一个整数，也可以把一个整数转换成一个指针。</li>
+</ul>
+<p>总结：</p>
+<ul>
+<li>static_cast：基本类型转换，低风险；</li>
+<li>dynamic_cast：类层次之间的上行转换或下行转换，低风险；</li>
+<li>const_cast：去const属性，低风险；</li>
+<li>reinterpret_cast：转换不相关的类型，高风险。</li>
+</ul>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2023/05/26/I-don-t-believe-this/" data-id="cli43kxn30001notz0oo3dmzj" data-title="I don&#39;t believe this!" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2023/05/26/I-don-t-believe-this/" data-id="cli43pm7n0000jwtzg0278rs9" data-title="I don&#39;t believe this!" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -138,7 +164,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2023/05/26/new-start/" data-id="cli43kxn50002notzcn8nf0xj" data-title="new start!" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2023/05/26/new-start/" data-id="cli43pm7z0003jwtz7tvchlqt" data-title="new start!" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -176,7 +202,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2023/05/20/My-New-Post/" data-id="cli43kxn60003notzaqzigs32" data-title="My New Post" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2023/05/20/My-New-Post/" data-id="cli43pm7v0001jwtzhcy5d8qw" data-title="My New Post" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -227,7 +253,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://example.com/2023/05/20/hello-world/" data-id="cli43kxmq0000notzdyhpaeun" data-title="Hello World" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="http://example.com/2023/05/20/hello-world/" data-id="cli43pm7x0002jwtzefgx2jcl" data-title="Hello World" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
