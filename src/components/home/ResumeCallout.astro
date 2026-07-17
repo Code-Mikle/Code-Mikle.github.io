@@ -1,0 +1,63 @@
+<aside class="resume-callout">
+	<div>
+		<p>04 / PROFILE</p>
+		<h2>代码之外，也记录成长路径。</h2>
+		<div>在线简历保留一份简洁、可打印的个人快照；真实经历与教育信息可在后续安全补充。</div>
+	</div>
+	<a href="/resume/">查看简历 <span aria-hidden="true">→</span></a>
+</aside>
+
+<style>
+	.resume-callout {
+		display: flex;
+		align-items: end;
+		justify-content: space-between;
+		gap: 3rem;
+		margin-top: clamp(5rem, 9vw, 8rem);
+		padding: clamp(1.5rem, 4vw, 2.8rem);
+		border: 1px solid var(--cm-border);
+		border-inline-start: 3px solid var(--cm-accent);
+		border-radius: 0.8rem;
+		background: var(--cm-surface);
+	}
+
+	p {
+		margin: 0 0 0.8rem;
+		color: var(--cm-accent);
+		font-family: var(--cm-font-mono);
+		font-size: 0.72rem;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+	}
+
+	h2 {
+		margin: 0;
+		color: var(--sl-color-white);
+		font-size: clamp(1.5rem, 3vw, 2.2rem);
+		letter-spacing: -0.04em;
+	}
+
+	.resume-callout div div {
+		max-width: 42rem;
+		margin-top: 0.8rem;
+		color: var(--cm-muted);
+		line-height: 1.7;
+	}
+
+	a {
+		flex: 0 0 auto;
+		color: var(--cm-accent);
+		font-family: var(--cm-font-mono);
+		font-size: 0.8rem;
+		font-weight: 700;
+		text-decoration: none;
+	}
+
+	@media (max-width: 42rem) {
+		.resume-callout {
+			align-items: start;
+			flex-direction: column;
+			gap: 1.5rem;
+		}
+	}
+</style>

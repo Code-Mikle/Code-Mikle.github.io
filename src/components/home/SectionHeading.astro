@@ -1,0 +1,83 @@
+---
+interface Props {
+	index: string;
+	eyebrow: string;
+	title: string;
+	description?: string;
+	href?: string;
+	linkLabel?: string;
+}
+
+const { index, eyebrow, title, description, href, linkLabel = '查看全部' } = Astro.props;
+---
+
+<header class="section-heading">
+	<div>
+		<p><span>{index}</span> {eyebrow}</p>
+		<h2>{title}</h2>
+		{description && <div class="description">{description}</div>}
+	</div>
+	{href && <a {href}>{linkLabel}<span aria-hidden="true"> →</span></a>}
+</header>
+
+<style>
+	.section-heading {
+		display: flex;
+		justify-content: space-between;
+		align-items: end;
+		gap: 2rem;
+		margin-block: 0 1.6rem;
+	}
+
+	p {
+		margin: 0 0 0.7rem;
+		color: var(--cm-muted);
+		font-family: var(--cm-font-mono);
+		font-size: 0.72rem;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+	}
+
+	p span {
+		color: var(--cm-accent);
+	}
+
+	h2 {
+		margin: 0;
+		color: var(--sl-color-white);
+		font-size: clamp(1.65rem, 3vw, 2.4rem);
+		font-weight: 720;
+		letter-spacing: -0.045em;
+		line-height: 1.15;
+	}
+
+	.description {
+		max-width: 42rem;
+		margin-top: 0.75rem;
+		color: var(--cm-muted);
+		line-height: 1.7;
+	}
+
+	a {
+		flex: 0 0 auto;
+		padding-bottom: 0.25rem;
+		border-bottom: 1px solid var(--cm-border);
+		color: var(--cm-accent);
+		font-family: var(--cm-font-mono);
+		font-size: 0.78rem;
+		font-weight: 700;
+		text-decoration: none;
+	}
+
+	a:hover {
+		border-color: var(--cm-accent);
+	}
+
+	@media (max-width: 35rem) {
+		.section-heading {
+			align-items: start;
+			flex-direction: column;
+			gap: 1rem;
+		}
+	}
+</style>

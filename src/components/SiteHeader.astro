@@ -1,0 +1,231 @@
+---
+import config from 'virtual:starlight/user-config';
+import LanguageSelect from 'virtual:starlight/components/LanguageSelect';
+import Search from 'virtual:starlight/components/Search';
+import SiteTitle from 'virtual:starlight/components/SiteTitle';
+import SocialIcons from 'virtual:starlight/components/SocialIcons';
+import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
+
+const shouldRenderSearch =
+	config.pagefind || config.components.Search !== '@astrojs/starlight/components/Search.astro';
+const { hasSidebar } = Astro.locals.starlightRoute;
+const pathname = Astro.url.pathname;
+
+const navItems = [
+	{ label: '首页', href: '/' },
+	{ label: '项目', href: '/projects/' },
+	{ label: '文章', href: '/articles/' },
+	{ label: '知识库', href: '/notes/' },
+	{ label: '简历', href: '/resume/' },
+];
+
+const isActive = (href: string) =>
+	href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(href);
+---
+
+<div class="site-header">
+	<div class="title-wrapper sl-flex">
+		<SiteTitle />
+	</div>
+
+	<nav class="primary-nav" aria-label="主要导航">
+		{
+			navItems.map((item) => (
+				<a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>
+					{item.label}
+				</a>
+			))
+		}
+	</nav>
+
+	<div class="search-wrapper sl-flex print:hidden">
+		{shouldRenderSearch && <Search />}
+	</div>
+
+	<div class="desktop-actions sl-hidden md:sl-flex print:hidden">
+		<div class="sl-flex social-icons"><SocialIcons /></div>
+		<ThemeSelect />
+		<LanguageSelect />
+	</div>
+
+	{
+		!hasSidebar && (
+			<details class="compact-menu print:hidden">
+				<summary aria-label="打开站点导航">
+					<span />
+					<span />
+					<span />
+				</summary>
+				<div class="compact-panel">
+					<nav aria-label="移动端导航">
+						{navItems.map((item) => (
+							<a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>
+								{item.label}
+							</a>
+						))}
+					</nav>
+					<div class="compact-tools">
+						<ThemeSelect />
+						<a href="https://github.com/Code-Mikle" rel="me">GitHub</a>
+					</div>
+				</div>
+			</details>
+		)
+	}
+</div>
+
+<style>
+	@layer starlight.core {
+		.site-header {
+			display: flex;
+			align-items: center;
+			gap: clamp(0.75rem, 2vw, 1.5rem);
+			height: 100%;
+		}
+
+		.title-wrapper {
+			min-width: 0;
+			overflow: clip;
+			padding: 0.25rem;
+			margin: -0.25rem;
+			flex: 0 0 auto;
+		}
+
+		.primary-nav {
+			display: none;
+			align-items: center;
+			gap: 0.2rem;
+		}
+
+		.primary-nav a {
+			position: relative;
+			color: var(--sl-color-gray-2);
+			font-size: var(--sl-text-sm);
+			font-weight: 600;
+			line-height: 2.2rem;
+			padding-inline: 0.7rem;
+			text-decoration: none;
+			white-space: nowrap;
+		}
+
+		.primary-nav a::after {
+			position: absolute;
+			content: '';
+			inset: auto 0.7rem 0.15rem;
+			height: 2px;
+			background: var(--cm-accent);
+			transform: scaleX(0);
+			transform-origin: left;
+			transition: transform 160ms ease;
+		}
+
+		.primary-nav a:hover,
+		.primary-nav a[aria-current='page'] {
+			color: var(--sl-color-white);
+		}
+
+		.primary-nav a:hover::after,
+		.primary-nav a[aria-current='page']::after {
+			transform: scaleX(1);
+		}
+
+		.search-wrapper {
+			margin-inline-start: auto;
+			min-width: 0;
+		}
+
+		.desktop-actions {
+			align-items: center;
+			gap: 1rem;
+		}
+
+		.social-icons {
+			align-items: center;
+		}
+
+		.compact-menu {
+			position: relative;
+			flex: 0 0 auto;
+		}
+
+		.compact-menu summary {
+			display: grid;
+			place-content: center;
+			gap: 4px;
+			width: 2.5rem;
+			height: 2.5rem;
+			border: 1px solid var(--cm-border);
+			border-radius: 0.65rem;
+			cursor: pointer;
+			list-style: none;
+		}
+
+		.compact-menu summary::-webkit-details-marker {
+			display: none;
+		}
+
+		.compact-menu summary span {
+			display: block;
+			width: 1rem;
+			height: 1px;
+			background: var(--sl-color-white);
+		}
+
+		.compact-panel {
+			position: absolute;
+			inset-block-start: calc(100% + 0.75rem);
+			inset-inline-end: 0;
+			width: min(18rem, calc(100vw - 2rem));
+			padding: 0.65rem;
+			border: 1px solid var(--cm-border);
+			border-radius: 0.8rem;
+			background: var(--cm-surface);
+			box-shadow: var(--sl-shadow-lg);
+		}
+
+		.compact-panel nav {
+			display: grid;
+		}
+
+		.compact-panel nav a {
+			padding: 0.7rem 0.75rem;
+			border-radius: 0.5rem;
+			color: var(--sl-color-white);
+			font-weight: 600;
+			text-decoration: none;
+		}
+
+		.compact-panel nav a:hover,
+		.compact-panel nav a[aria-current='page'] {
+			background: var(--cm-accent-wash);
+			color: var(--cm-accent);
+		}
+
+		.compact-tools {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 1rem;
+			margin-top: 0.5rem;
+			padding: 0.75rem;
+			border-top: 1px solid var(--cm-border);
+		}
+
+		.compact-tools a {
+			color: var(--cm-accent);
+			font-family: var(--cm-font-mono);
+			font-size: var(--sl-text-sm);
+			text-decoration: none;
+		}
+
+		@media (min-width: 68rem) {
+			.primary-nav {
+				display: flex;
+			}
+
+			.compact-menu {
+				display: none;
+			}
+		}
+	}
+</style>

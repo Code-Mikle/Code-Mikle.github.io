@@ -1,0 +1,128 @@
+---
+import { projects } from '../../data/site';
+
+interface Props { limit?: number }
+const { limit } = Astro.props;
+const visibleProjects = typeof limit === 'number' ? projects.slice(0, limit) : projects;
+---
+
+<div class="project-grid">
+	{
+		visibleProjects.map((project) => (
+			<article class="project-card">
+				<div class="card-head">
+					<span>{project.index}</span>
+					<i>{project.status}</i>
+				</div>
+				<h3>{project.title}</h3>
+				<p>{project.description}</p>
+				<ul aria-label={`${project.title} 技术栈`}>
+					{project.stack.map((item) => <li>{item}</li>)}
+				</ul>
+				<a href={project.href} target={project.external ? '_blank' : undefined} rel={project.external ? 'noreferrer' : undefined}>
+					查看项目 <span aria-hidden="true">{project.external ? '↗' : '→'}</span>
+				</a>
+			</article>
+		))
+	}
+</div>
+
+<style>
+	.project-grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.9rem;
+	}
+
+	.project-card {
+		display: flex;
+		flex-direction: column;
+		min-height: 20rem;
+		padding: 1.25rem;
+		border: 1px solid var(--cm-border);
+		border-radius: 0.8rem;
+		background: var(--cm-surface);
+		transition: border-color 160ms ease, transform 160ms ease;
+	}
+
+	.project-card:hover {
+		border-color: color-mix(in srgb, var(--cm-accent) 65%, var(--cm-border));
+		transform: translateY(-2px);
+	}
+
+	.card-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		font-family: var(--cm-font-mono);
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+	}
+
+	.card-head span {
+		color: var(--cm-accent);
+	}
+
+	.card-head i {
+		color: var(--cm-muted);
+		font-style: normal;
+	}
+
+	h3 {
+		margin: 2.6rem 0 0;
+		color: var(--sl-color-white);
+		font-size: 1.24rem;
+		font-weight: 700;
+		letter-spacing: -0.03em;
+	}
+
+	p {
+		margin: 0.8rem 0 0;
+		color: var(--cm-muted);
+		font-size: 0.9rem;
+		line-height: 1.7;
+	}
+
+	ul {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		margin: auto 0 1.25rem;
+		padding: 1.5rem 0 0;
+		list-style: none;
+	}
+
+	li {
+		padding: 0.25rem 0.5rem;
+		border: 1px solid var(--cm-border);
+		border-radius: 999px;
+		color: var(--cm-muted);
+		font-family: var(--cm-font-mono);
+		font-size: 0.66rem;
+	}
+
+	.project-card > a {
+		align-self: flex-start;
+		color: var(--cm-accent);
+		font-family: var(--cm-font-mono);
+		font-size: 0.76rem;
+		font-weight: 700;
+		text-decoration: none;
+	}
+
+	.project-card > a:hover {
+		color: var(--cm-accent-hover);
+	}
+
+	@media (max-width: 58rem) {
+		.project-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.project-card {
+			min-height: 16rem;
+		}
+	}
+</style>

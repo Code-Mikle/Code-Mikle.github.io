@@ -1,0 +1,151 @@
+<div class="resume-sheet">
+	<header>
+		<div>
+			<p>CODE-MIKLE / SOFTWARE DEVELOPER</p>
+			<h2>个人简历</h2>
+			<div>关注软件开发、计算机基础与可持续维护的技术写作。</div>
+		</div>
+		<a href="https://github.com/Code-Mikle">github.com/Code-Mikle ↗</a>
+	</header>
+
+	<div class="resume-grid">
+		<section>
+			<span>01 / ABOUT</span>
+			<h3>个人简介</h3>
+			<p>这里是公开简历的基础骨架。项目能力可以从当前站点与 GitHub 查看，具体经历、教育和联系方式将在确认公开范围后补充。</p>
+		</section>
+		<section>
+			<span>02 / FOCUS</span>
+			<h3>技术关注</h3>
+			<ul>
+				<li>C / C++ 与数据结构</li>
+				<li>计算机网络、操作系统与数据库</li>
+				<li>Astro、静态站点与技术内容工程</li>
+			</ul>
+		</section>
+		<section>
+			<span>03 / CURRENT</span>
+			<h3>当前项目</h3>
+			<p>重建个人技术档案馆，将项目、文章、面试知识库和简历统一为可搜索、适合移动端阅读的静态站点。</p>
+		</section>
+		<section>
+			<span>04 / DETAILS</span>
+			<h3>经历与教育</h3>
+			<p class="placeholder">待补充真实信息。源码中没有写入虚构公司、年限或教育经历。</p>
+		</section>
+	</div>
+</div>
+
+<style>
+	.resume-sheet {
+		margin-top: 1.5rem;
+		border: 1px solid var(--cm-border);
+		border-radius: 0.85rem;
+		background: var(--cm-surface);
+		overflow: hidden;
+	}
+
+	header {
+		display: flex;
+		align-items: end;
+		justify-content: space-between;
+		gap: 2rem;
+		padding: clamp(1.5rem, 4vw, 2.8rem);
+		border-bottom: 1px solid var(--cm-border);
+	}
+
+	header p,
+	section > span {
+		margin: 0;
+		color: var(--cm-accent);
+		font-family: var(--cm-font-mono);
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.1em;
+	}
+
+	header h2 {
+		margin: 0.7rem 0 0;
+		color: var(--sl-color-white);
+		font-size: clamp(2rem, 5vw, 3.5rem);
+		letter-spacing: -0.06em;
+	}
+
+	header div div {
+		margin-top: 0.6rem;
+		color: var(--cm-muted);
+	}
+
+	header a {
+		color: var(--cm-accent);
+		font-family: var(--cm-font-mono);
+		font-size: 0.75rem;
+		text-decoration: none;
+	}
+
+	.resume-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	section {
+		min-height: 15rem;
+		padding: clamp(1.4rem, 3vw, 2rem);
+		border-inline-end: 1px solid var(--cm-border);
+		border-block-end: 1px solid var(--cm-border);
+	}
+
+	section:nth-child(2n) {
+		border-inline-end: 0;
+	}
+
+	h3 {
+		margin: 1.5rem 0 0;
+		color: var(--sl-color-white);
+		font-size: 1.2rem;
+	}
+
+	section p,
+	section ul {
+		margin: 0.75rem 0 0;
+		color: var(--cm-muted);
+		font-size: 0.9rem;
+		line-height: 1.75;
+	}
+
+	section ul {
+		padding-inline-start: 1.1rem;
+	}
+
+	.placeholder {
+		font-style: italic;
+	}
+
+	@media (max-width: 42rem) {
+		header {
+			align-items: start;
+			flex-direction: column;
+		}
+
+		.resume-grid {
+			grid-template-columns: 1fr;
+		}
+
+		section {
+			min-height: auto;
+			border-inline-end: 0;
+		}
+	}
+
+	@media print {
+		.resume-sheet {
+			border-color: #aaa;
+			background: #fff;
+		}
+
+		header h2,
+		h3 {
+			color: #111;
+		}
+	}
+</style>

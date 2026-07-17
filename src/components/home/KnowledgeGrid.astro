@@ -1,0 +1,89 @@
+---
+import { knowledgeAreas } from '../../data/site';
+---
+
+<div class="knowledge-grid">
+	{
+		knowledgeAreas.map((area) => (
+			<a href={area.href}>
+				<span>{area.index}</span>
+				<h3>{area.title}</h3>
+				<p>{area.description}</p>
+				<i aria-hidden="true">↗</i>
+			</a>
+		))
+	}
+</div>
+
+<style>
+	.knowledge-grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		border-block-start: 1px solid var(--cm-border);
+		border-inline-start: 1px solid var(--cm-border);
+		border-radius: 0.8rem;
+		overflow: hidden;
+	}
+
+	a {
+		position: relative;
+		min-height: 10.5rem;
+		padding: 1.1rem;
+		border-block-end: 1px solid var(--cm-border);
+		border-inline-end: 1px solid var(--cm-border);
+		background: var(--cm-surface);
+		color: inherit;
+		text-decoration: none;
+		transition: background-color 160ms ease;
+	}
+
+	a:hover {
+		background: var(--cm-accent-wash);
+	}
+
+	a > span {
+		color: var(--cm-accent);
+		font-family: var(--cm-font-mono);
+		font-size: 0.7rem;
+		font-weight: 700;
+	}
+
+	h3 {
+		margin: 1.7rem 0 0;
+		color: var(--sl-color-white);
+		font-size: 1.05rem;
+		font-weight: 700;
+	}
+
+	p {
+		margin: 0.4rem 0 0;
+		color: var(--cm-muted);
+		font-size: 0.82rem;
+		line-height: 1.55;
+	}
+
+	i {
+		position: absolute;
+		inset: 1rem 1rem auto auto;
+		color: var(--cm-border);
+		font-style: normal;
+		transition: color 160ms ease, transform 160ms ease;
+	}
+
+	a:hover i {
+		color: var(--cm-accent);
+		transform: translate(2px, -2px);
+	}
+
+	@media (max-width: 48rem) {
+		.knowledge-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (max-width: 30rem) {
+		.knowledge-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

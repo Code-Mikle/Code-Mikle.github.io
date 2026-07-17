@@ -1,0 +1,72 @@
+---
+import { getCollection } from 'astro:content';
+import { knowledgeAreas, projects } from '../../data/site';
+
+const docs = await getCollection('docs');
+const articleCount = docs.filter((entry) => entry.id.startsWith('articles/') && entry.id !== 'articles/index').length;
+const noteCount = docs.filter((entry) => entry.id.startsWith('notes/') && !entry.id.endsWith('/index') && entry.id !== 'notes/index').length;
+
+const stats = [
+	{ value: projects.length, label: '项目与计划' },
+	{ value: articleCount, label: '技术文章' },
+	{ value: noteCount, label: '知识条目' },
+	{ value: knowledgeAreas.length, label: '知识领域' },
+];
+---
+
+<section class="stats" aria-label="站点内容概览">
+	{stats.map((stat) => <div><strong>{stat.value.toString().padStart(2, '0')}</strong><span>{stat.label}</span></div>)}
+</section>
+
+<style>
+	.stats {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		margin-block: 0 clamp(5rem, 9vw, 7.5rem);
+		border: 1px solid var(--cm-border);
+		border-radius: 0.8rem;
+		background: var(--cm-surface);
+		overflow: hidden;
+	}
+
+	.stats div {
+		display: flex;
+		align-items: baseline;
+		justify-content: center;
+		gap: 0.7rem;
+		min-height: 6rem;
+		padding: 1.2rem;
+		border-inline-start: 1px solid var(--cm-border);
+	}
+
+	.stats div:first-child {
+		border-inline-start: 0;
+	}
+
+	strong {
+		color: var(--sl-color-white);
+		font-family: var(--cm-font-mono);
+		font-size: clamp(1.55rem, 3vw, 2.2rem);
+		font-variant-numeric: tabular-nums;
+		letter-spacing: -0.08em;
+	}
+
+	span {
+		color: var(--cm-muted);
+		font-size: 0.78rem;
+	}
+
+	@media (max-width: 45rem) {
+		.stats {
+			grid-template-columns: repeat(2, 1fr);
+		}
+
+		.stats div:nth-child(3) {
+			border-inline-start: 0;
+		}
+
+		.stats div:nth-child(n + 3) {
+			border-block-start: 1px solid var(--cm-border);
+		}
+	}
+</style>

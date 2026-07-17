@@ -1,40 +1,43 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
-template: splash # Remove or comment out this line to display the site sidebar on this page.
+title: Code-Mikle
+description: 记录项目、技术文章与计算机基础知识的个人技术档案馆。
+template: splash
+pagefind: false
+prev: false
+next: false
 hero:
-  tagline: Congrats on setting up a new Starlight project!
-  image:
-    file: ../../assets/houston.webp
+  title: 你好，我是 Code-Mikle。
+  tagline: 我在这里记录做过的项目、解决过的问题，以及正在整理的计算机基础知识。希望每次回看，都能比上一次更清楚一点。
   actions:
-    - text: Example Guide
-      link: /guides/example/
-      icon: right-arrow
-    - text: Read the Starlight docs
-      link: https://starlight.astro.build
-      icon: external
+    - text: 查看项目
+      link: /projects/
+    - text: 打开知识库
+      link: /notes/
       variant: minimal
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import HomeStats from '../../components/home/HomeStats.astro';
+import SectionHeading from '../../components/home/SectionHeading.astro';
+import ProjectGrid from '../../components/home/ProjectGrid.astro';
+import ArticleList from '../../components/home/ArticleList.astro';
+import KnowledgeGrid from '../../components/home/KnowledgeGrid.astro';
+import ResumeCallout from '../../components/home/ResumeCallout.astro';
 
-## Next steps
+<HomeStats />
 
-<CardGrid stagger>
-	<Card title="Update content" icon="pencil">
-		Edit `src/content/docs/index.mdx` to see this page change.
-	</Card>
-	<Card title="Change page layout" icon="document">
-		Delete `template: splash` in `src/content/docs/index.mdx` to display a
-		sidebar on this page.
-	</Card>
-	<Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
-	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
-	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
-	</Card>
-</CardGrid>
+<section class="home-section">
+  <SectionHeading index="01" eyebrow="SELECTED WORK" title="正在推进的项目" description="优先展示正在维护、能够持续积累价值的工作。" href="/projects/" />
+  <ProjectGrid />
+</section>
+
+<section class="home-section">
+  <SectionHeading index="02" eyebrow="WRITING" title="最近的技术文章" description="从真实问题出发，写下选择、边界与验证过程。" href="/articles/" />
+  <ArticleList limit={3} />
+</section>
+
+<section class="home-section">
+  <SectionHeading index="03" eyebrow="KNOWLEDGE BASE" title="计算机基础知识库" description="按主题整理的复习材料，适合桌面端阅读，也适合在手机上快速检索。" href="/notes/" linkLabel="进入知识库" />
+  <KnowledgeGrid />
+</section>
+
+<ResumeCallout />

@@ -1,0 +1,98 @@
+---
+import { articles } from '../../data/site';
+
+interface Props { limit?: number }
+const { limit } = Astro.props;
+const visibleArticles = typeof limit === 'number' ? articles.slice(0, limit) : articles;
+
+const formatter = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+---
+
+<div class="article-list">
+	{
+		visibleArticles.map((article, index) => (
+			<a class="article-row" href={article.href}>
+				<span class="row-index">{String(index + 1).padStart(2, '0')}</span>
+				<div>
+					<p><time datetime={article.date}>{formatter.format(new Date(`${article.date}T00:00:00+08:00`))}</time> · {article.topic}</p>
+					<h3>{article.title}</h3>
+					<div class="description">{article.description}</div>
+				</div>
+				<span class="arrow" aria-hidden="true">→</span>
+			</a>
+		))
+	}
+</div>
+
+<style>
+	.article-list {
+		border-block-start: 1px solid var(--cm-border);
+	}
+
+	.article-row {
+		display: grid;
+		grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 1rem;
+		padding-block: 1.35rem;
+		border-block-end: 1px solid var(--cm-border);
+		color: inherit;
+		text-decoration: none;
+		transition: padding-inline 160ms ease, background-color 160ms ease;
+	}
+
+	.article-row:hover {
+		padding-inline: 0.8rem;
+		background: var(--cm-surface);
+	}
+
+	.row-index,
+	.arrow {
+		color: var(--cm-accent);
+		font-family: var(--cm-font-mono);
+		font-size: 0.75rem;
+		font-weight: 700;
+	}
+
+	p {
+		margin: 0;
+		color: var(--cm-muted);
+		font-family: var(--cm-font-mono);
+		font-size: 0.68rem;
+		letter-spacing: 0.04em;
+	}
+
+	h3 {
+		margin: 0.35rem 0 0;
+		color: var(--sl-color-white);
+		font-size: 1.05rem;
+		font-weight: 680;
+		letter-spacing: -0.025em;
+	}
+
+	.description {
+		margin-top: 0.35rem;
+		color: var(--cm-muted);
+		font-size: 0.84rem;
+		line-height: 1.55;
+	}
+
+	.arrow {
+		font-size: 1rem;
+		transition: transform 160ms ease;
+	}
+
+	.article-row:hover .arrow {
+		transform: translateX(3px);
+	}
+
+	@media (max-width: 38rem) {
+		.article-row {
+			grid-template-columns: minmax(0, 1fr) auto;
+		}
+
+		.row-index {
+			display: none;
+		}
+	}
+</style>

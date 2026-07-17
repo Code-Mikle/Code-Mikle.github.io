@@ -1,0 +1,40 @@
+---
+title: 计算机基础知识库
+description: 按主题整理的面试复习材料与技术笔记。
+sidebar:
+  label: 知识库首页
+  order: 1
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+这里存放正在整理的计算机基础知识。内容优先考虑三个场景：快速回忆、解释原理、继续追问。
+
+<CardGrid>
+  <Card title="C / C++" icon="code">
+    语言基础、对象模型、内存、指针与 STL。 [进入分类 →](/notes/cpp/)
+  </Card>
+  <Card title="数据结构" icon="puzzle">
+    树、图、链表、排序与常见算法模型。 [进入分类 →](/notes/data-structures/)
+  </Card>
+  <Card title="计算机网络" icon="link">
+    TCP/IP、HTTP、DNS 与网络排错。 [进入分类 →](/notes/computer-network/)
+  </Card>
+  <Card title="操作系统" icon="laptop">
+    进程、线程、内存、I/O 与文件系统。 [进入分类 →](/notes/operating-system/)
+  </Card>
+  <Card title="数据库" icon="database">
+    索引、事务、锁与查询优化。 [进入分类 →](/notes/database/)
+  </Card>
+  <Card title="系统设计" icon="setting">
+    缓存、消息、可用性与扩展性。 [进入分类 →](/notes/system-design/)
+  </Card>
+</CardGrid>
+
+## 编写原则
+
+- 先给结论，再解释为什么；
+- 明确概念成立的条件和边界；
+- 对易混淆内容使用对照表；
+- 代码示例保持最小且能够独立理解；
+- 不确定或待验证的内容明确标记。
