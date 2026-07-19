@@ -2,7 +2,7 @@
 title: Spring 八股文
 ---
 
-# Spring 的 DI 和 IoC 是什么？
+## Spring 的 DI 和 IoC 是什么？
 
 Spring 中，DI 和 IoC 描述的是同一套机制的两个角度。
 
@@ -10,7 +10,7 @@ Spring 中，DI 和 IoC 描述的是同一套机制的两个角度。
 >
 >DI：Spring 将创建好的依赖对象注入进来。
 
-## IoC（控制反转，Inversion of Control）
+### IoC（控制反转，Inversion of Control）
 
 核心就是，对象的创建和依赖关系由容器管理，而不是代码里自己 new。
 
@@ -49,7 +49,7 @@ public class OrderService {
 
 对象控制权从业务代码转移到了 Spring 容器，这就是**控制反转**。
 
-### Spring 的 IoC 容器
+#### Spring 的 IoC 容器
 
 Spring 中负责创建和管理对象的核心组件叫 IoC 容器。
 
@@ -71,7 +71,7 @@ Spring 容器主要负责：
 - 处理作用域，如单例、原型
 - 处理代理、事务、AOP 等功能
 
-## DI（依赖注入，Dependence Injection）
+### DI（依赖注入，Dependence Injection）
 
 DI 是 Spring 实现 IoC 的主要方式。
 
@@ -98,7 +98,7 @@ public class OrderService {
 - 集中化的配置和管理
 - 便于集成事务、AOP、缓存等 Spring 功能
 
-### Spring 依赖注入的方式？
+#### Spring 依赖注入的方式？
 
 最为主要的就是 构造器注入、Setter 注入、字段注入，分别如下：
 
@@ -183,17 +183,15 @@ public class OrderService {
 
 所以说，没有哪一种注入方式最好，而是要结合具体的业务场景来选择最合适的方式。
 
-
-
-### Spring 循环依赖是什么？
+#### Spring 循环依赖是什么？
 
 Spring 在创建 BeanA 的时候，BeanA 依赖 BeanB 的创建，BeanB 同时又依赖 BeanA 的创建。从而导致 Spring 在初始化时无法决定应该先创建哪一个，从而引发死循环。
 
-#### Spring 解决循环依赖的方法？
+**Spring 解决循环依赖的方法**
 
+## Spring Bean
 
-
-# Bean 生命周期
+### Bean 生命周期
 
 Spring Bean 的生命周期，是指一个 Bean 从“被 Spring 发现并创建”，到 “初始化完成并投入使用”，再到 “容器关闭时被销毁”的整个过程。
 
@@ -519,6 +517,262 @@ Bean 可以使用
        return new UserService();
    }
    ```
+
+### Spring Bean 的作用域
+
+Spring Bean 的作用域（Scope）决定了：
+
+1. Spring 为一个 Bean 创建多少个实例。
+2. Bean 实例能够存活多长时间。
+3. 在什么范围内获取到的是同一个 Bean。
+
+最常用的是：
+
+```
+singleton：一个 Spring 容器中一个实例，默认作用域   -  适合：无状态的 Bean（如 Service、DAO、工具类）
+prototype：每次获取都创建一个新实例  -  适合：有状态的 Bean（如需要存储请求上下文信息的对象）
+request：一次 HTTP 请求一个实例  -  适合：存储当前请求的上下文信息（如请求参数封装）
+session：一个 HTTP Session 一个实例  -  适合：存储用户登录信息、临时购物车数据等
+application：一个 Web 应用一个实例  -  适合：全局应用配置、全局缓存
+websocket：一个 WebSocket 会话一个实例  -  适合：WebSocket 通信场景
+```
+
+## Spring 的主要模块
+
+Spring 主要由以下模块组成：
+
+1. 核心容器 Core Container
+    负责创建和管理 Bean，实现 IoC、DI 和 Bean 生命周期管理。主要包括 `spring-core`、`spring-beans`、`spring-context`。
+2. AOP 模块
+    负责面向切面编程，把日志、事务、权限校验等公共逻辑统一处理。
+3. 数据访问模块
+    负责数据库访问和事务管理，包括 JDBC、ORM 和事务支持。主要包括 `spring-jdbc`、`spring-tx`、`spring-orm`。
+4. Web 模块
+    负责开发 Web 应用和接口。主要包括 Spring MVC、WebFlux 和 WebSocket。
+5. 消息模块
+    负责消息的发送、接收和处理，常用于 WebSocket、消息队列等场景。
+6. 测试模块
+    负责测试 Spring 应用，例如加载 Spring 容器、测试 Controller 和事务。
+
+## Spring AOP
+
+Spring AOP（Aspect-Oriented Programming，面向切面编程） 是 Spring 提供的面向切面编程功能，用来把日志、事务、权限校验等“公共逻辑”从业务代码中抽离出来，统一处理。
+
+例如，多个业务方法都需要记录日志：
+
+```java
+public void createOrder() {
+    System.out.println("开始记录日志");
+    // 创建订单
+    System.out.println("结束记录日志");
+}
+
+public void cancelOrder() {
+    System.out.println("开始记录日志");
+    // 取消订单
+    System.out.println("结束记录日志");
+}
+```
+
+这种写法会导致公共代码重复，而且业务代码中混入了日志代码。
+
+使用 AOP 后，可以把日志单独写成一个切面：
+
+```java
+@Aspect
+@Component
+public class LogAspect {
+
+    @Before("execution(* com.example.service.*.*(..))")
+    public void before() {
+        System.out.println("调用业务方法前记录日志");
+    }
+}
+```
+
+业务类只保留自身逻辑：
+
+```java
+@Service
+public class OrderService {
+
+    public void createOrder() {
+        System.out.println("创建订单");
+    }
+
+    public void cancelOrder() {
+        System.out.println("取消订单");
+    }
+}
+```
+
+当调用这些方法时，Spring 会自动在方法执行前调用日志逻辑。
+
+**Spring AOP 的作用：**
+
+可以简单理解为：
+
+```
+不修改业务代码
+    ↓
+在业务方法执行前后
+    ↓
+自动添加公共功能
+```
+
+常见应用包括：
+
+- 事务管理
+- 日志记录
+- 权限校验
+- 接口耗时统计
+- 缓存
+- 异常处理
+- 重试
+
+例如常用的：
+
+```java
+@Transactional
+public void createOrder() {
+    // 数据库操作
+}
+```
+
+`@Transactional` 底层就使用了 Spring AOP。Spring 会在方法执行前开启事务，执行成功后提交，发生异常时回滚。
+
+**重要概念：**
+
+- 切面（Aspect）
+
+  公共逻辑所在的类，例如日志切面：
+
+  ```java
+  @Aspect
+  @Component
+  public class LogAspect {
+  }
+  ```
+
+- 连接点（Join Point）
+
+  可以被增强的位置。
+
+  在 Spring AOP 中，主要就是 Bean 的方法执行。
+
+  例如：
+
+  ```java
+  orderService.createOrder();
+  ```
+
+  `createOrder()` 的执行就是一个连接点。
+
+- 切入点（PointCut）
+
+  指定哪些方法需要被增强。
+
+  ```java
+  execution(* com.example.service.*.*(..))
+  ```
+
+  它表示匹配 `service` 包下类的所有方法。
+
+- 通知（Advice）
+
+  表示在目标方法的什么时间执行公共逻辑。
+
+  常见类型：
+
+  ```
+  @Before       // 方法执行前
+  @After        // 方法执行后
+  @AfterReturning // 方法正常返回后
+  @AfterThrowing  // 方法抛异常后
+  @Around       // 包围整个方法
+  ```
+
+  例如：
+
+  ```java
+  @Before("execution(* com.example.service.*.*(..))")
+  public void before() {
+      System.out.println("方法执行前");
+  }
+  ```
+
+- 目标对象（Target）
+
+  真正执行具体业务逻辑的对象，例如：
+
+  ```java
+  OrderService
+  ```
+
+**AOP 的实现原理：**
+
+Spring 通常会为目标 Bean 创建一个代理对象。
+
+```
+调用者
+  ↓
+代理对象
+  ↓
+执行日志、事务等公共逻辑
+  ↓
+调用真正的业务对象
+```
+
+例如：
+
+```java
+OrderService orderService = context.getBean(OrderService.class);
+```
+
+这里拿到的可能并不是原始 `OrderService`，而是 Spring 创建的代理对象。
+
+代理对象会完成类似逻辑：
+
+```java
+public void createOrder() {
+    // 开启事务
+
+    target.createOrder();
+
+    // 提交事务
+}
+```
+
+**AOP 完整示例：**
+
+```java
+@Aspect
+@Component
+public class TimeAspect {
+
+    @Around("execution(* com.example.service.*.*(..))")
+    public Object recordTime(ProceedingJoinPoint joinPoint)
+            throws Throwable {
+
+        long start = System.currentTimeMillis();
+
+        Object result = joinPoint.proceed();
+
+        long end = System.currentTimeMillis();
+
+        System.out.println(
+                joinPoint.getSignature().getName()
+                + "耗时：" + (end - start) + "ms"
+        );
+
+        return result;
+    }
+}
+```
+
+总结，Spring AOP 就是通过代理对象，在不修改业务代码的情况下，在业务方法执行前后统一加入日志、事务、权限等公共功能。
+
+
 
 
 
