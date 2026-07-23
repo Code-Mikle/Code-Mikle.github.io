@@ -580,7 +580,7 @@ B 创建完成
 
 > 当前 Spring Boot 的 `spring.main.allow-circular-references` 默认值为 `false`，因此即便是传统上能够通过早期引用处理的循环依赖，Spring Boot 默认也可能直接禁止。可以将其设为 `true` 临时兼容，但不应把它作为长期解决方案。
 >
-> ```yam
+> ```yaml
 > spring.main.allow-circular-references=true
 > ```
 

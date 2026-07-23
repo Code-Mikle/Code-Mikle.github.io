@@ -1,5 +1,5 @@
 ---
-titile: AI
+title: AI
 ---
 
 什么是 CoT，作用是啥

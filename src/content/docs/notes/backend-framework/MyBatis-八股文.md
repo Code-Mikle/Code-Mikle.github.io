@@ -54,7 +54,7 @@ private long id;
 
 数据库中的对应的表中的对应字段，也要设置为自增，以 MySQL 为例。
 
-```mysql
+```sql
 id BIGINT PRIMARY KEY AUTO_INCREMENT
 ```
 
