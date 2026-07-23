@@ -453,7 +453,7 @@ public void moveZeroes(int[] nums) {
 说明：你不能倾斜容器。
 ```
 
-<img src="./assets/image-20260501122335764.png" style="zoom:67%;" />
+![盛最多水的容器示意图](./assets/image-20260501122335764.png)
 
 ```
 提示：
@@ -494,7 +494,7 @@ public int maxArea(int[] height) {
 给定 n 个非负整数表示每个宽度为 1 的柱子的高度图，计算按此排列的柱子，下雨之后能接多少雨水。
 ```
 
-<img src="D:\Code\Code-Mikle.github.io\src\content\docs\notes\data-structures\leetcode-solutions\assets\image-20260501140129855.png" alt="image-20260501140129855" style="zoom:67%;" />
+![](./assets/image-20260501140129855.png)
 
 ```
 提示：
@@ -775,7 +775,7 @@ public class Solution {
 给你一个大小为 m x n 的矩阵 mat ，请以对角线遍历的顺序，用一个数组返回这个矩阵中的所有元素
 ```
 
-<img src="D:\Code\Code-Mikle.github.io\src\content\docs\notes\data-structures\leetcode-solutions\assets\diag1-grid.jpg" alt="img" style="zoom:67%;" />
+![](.\assets\diag1-grid.jpg)
 
 ```
 输入：mat = [[1,2,3],[4,5,6],[7,8,9]]
