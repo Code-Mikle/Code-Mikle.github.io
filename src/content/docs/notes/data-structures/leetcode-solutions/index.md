@@ -453,9 +453,7 @@ public void moveZeroes(int[] nums) {
 说明：你不能倾斜容器。
 ```
 
-<img src="D:\Code\Code-Mikle.github.io\src\content\docs\notes\data-structures\leetcode-solutions\assets\image-20260501122335764.png" alt="image-20260501122335764" style="zoom:67%;" />
-
-![](/images/data-structures/leetcode-solutions/image-20260501122335764.png)
+<img src="./assets/image-20260501122335764.png" style="zoom:67%;" />
 
 ```
 提示：
