@@ -7,5 +7,5 @@ description: 后端框架常见面试问题。
 
 ## 当前内容
 
-- [MyBatis-八股文](/notes/backend-framework/MyBatis-八股文/)
+- [MyBatis-八股文](/notes/backend-framework/myBatis-八股文/)
 - [spring-八股文](/notes/backend-framework/spring-八股文/)
