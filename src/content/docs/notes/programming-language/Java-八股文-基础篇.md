@@ -770,7 +770,6 @@ Closeable → 可以关闭
    interface FlyingAnimal extends Animal, Flyable {...}
    ```
 
-
 **Java 为什么同时需要接口和抽象类？**
 
 例如：
@@ -826,16 +825,6 @@ class Bird extends Animal
 - 如果只是定义一组行为规范，不涉及状态和实现细节，优先用接口。比如：Comparable、Serializable、Runnable 这些都是典型的接口使用场景。
 - 如果有公共代码需要复用，比如模板方法模式里的骨架逻辑，用抽象类更合适。比如：AbstractList、AbstractMap 这些都是抽象类的经典应用。
 - 如果一个类需要具备多种能力，只能用接口。因为 Java 不支持多继承，比如一个类既要能排序又要能序列化，只能同时实现 Comparable 和 Serializable 两个接口。
-
-
-
-
-
-
-
-
-
-
 
 ### 内部类
 
@@ -1214,6 +1203,8 @@ Object 类是 Java 中所有类的根类。除了基本类型，所有类都继�
 
    注意：如果两个对象的 equals 相同，那么哈希值一定相同；如果两个对象的哈希值相同，equals 不一定相同。前提是：重写 `equals()` 时，也同时重写了 `hashCode()`。
 
+   > `hashCode()` 重写指的就是根据类的成员变量来计算 hash 值。
+
 5. `clone()` 创建当前对象的一个副本。对于该方法 Object 默认的拷贝方式是浅拷贝。
 
    > 浅拷贝与深拷贝？
@@ -1331,13 +1322,9 @@ class Box<T> {
 
     private T value;
 
-    public void set(T value) {
-        this.value = value;
-    }
+    public void set(T value) { this.value = value; }
 
-    public T get() {
-        return value;
-    }
+    public T get() { return value; }
 }
 ```
 
@@ -1412,9 +1399,7 @@ class UserRepository implements Repository<User> {
     @Override
     public void save(User data) { ... }
     @Override
-    public User findById(Long id) {
-        return null;
-    }
+    public User findById(Long id) { return null; }
 }
 ```
 
@@ -1425,9 +1410,7 @@ class RepositoryImpl<T> implements Repository<T> {
     @Override
     public void save(T data) { ... }
     @Override
-    public T findById(Long id) {
-        return null;
-    }
+    public T findById(Long id) { return null; }
 }
 ```
 
