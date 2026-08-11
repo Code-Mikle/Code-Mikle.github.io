@@ -1150,39 +1150,15 @@ thread.setPriority(10);
 
 ## Java 内存模型 JMM
 
-> 这一块非常重要：
+> Java 内存模型 JMM 是 Java 为多线程环境定义的一套内存访问规范，它屏蔽了不同 CPU 和操作系统底层内存模型的差异。JMM 抽象出了主内存和线程工作内存，共享变量存储在主内存中，线程在执行时会把变量读取到自己的工作内存，因此多线程访问共享数据时可能产生原子性、可见性和有序性问题。
 >
-> ```
-> 主内存
-> 工作内存
-> 可见性
-> 原子性
-> 有序性
-> happens-before
-> 指令重排序
-> ```
+> 原子性是指一个操作不可被其他线程交叉干扰；可见性是指一个线程对共享变量的修改能否被其他线程看到；有序性则主要涉及编译器、JIT 和 CPU 的指令重排序。
 >
-> 一定要理解：
+> JMM 通过 happens-before 规则定义不同线程操作之间的可见性和顺序关系，例如 Monitor 解锁 happens-before 后续加锁、volatile 写 happens-before 后续 volatile 读、Thread.start 和 Thread.join 也都有相应的 happens-before 规则。
 >
-> > 多线程问题的本质是什么？
->
-> 通常就是三个：
->
-> ```
-> 原子性
-> 可见性
-> 有序性
-> ```
->
-> 然后自然引出：
->
-> ```
-> volatile 解决什么？
-> synchronized 解决什么？
-> CAS 解决什么？
-> ```
+> 在实际并发编程中，volatile 主要保证可见性和有序性，synchronized 能保证临界区的原子性、可见性和必要的有序性，而 CAS 主要用于实现共享变量的原子更新。
 
-JMM（Java Memory Model，Java 内存模型）是 Java 定义的一套“多线程访问共享内存时应该遵守的规则”。
+JMM（Java Memory Model，Java 内存模型）是 JVM 定义的一套“多线程访问共享内存时应该遵守的规则”。
 
 它主要规定了多个线程之间如何读取、修改、同步共享变量，以及一个线程对共享变量的修改什么时候能被另一个线程看到。
 
@@ -1191,6 +1167,12 @@ JMM（Java Memory Model，Java 内存模型）是 Java 定义的一套“多线�
 > JMM：多线程情况下，共享数据怎么访问，以及线程之间怎么保证数据一致性。
 >
 > JVM：Java 程序运行时，数据存在哪里。
+
+JMM 的核心目的是解决多线程并发编程中的三大核心问题：**可见性**、**原子性**和**有序性**。从而屏蔽不同硬件（如 x86、ARM）和操作系统在内存访问上的差异，确保 Java 程序在不同平台上表现出一致的并发行为。
+
+**为什么需要 JMM？**
+
+《Java 并发编程的艺术》
 
 ### 主内存和工作内存
 
@@ -1209,7 +1191,10 @@ JMM 抽象出了两个概念：主内存（Main Memory）和工作内存（Worki
    └───────────┘       └───────────┘
 ```
 
-原则上所有共享变量存储在主内存中，线程不能直接操作主内存中的共享变量。线程执行的时候，会把需要的数据读取到自己的工作内存，然后线程 A 在自己的工作内存中操作。
+- 主内存：所有线程共享的内存区域，存储着所有共享变量（如实例变量、静态变量等），所有线程都能访问，但线程不能直接操作主内存中的共享变量。线程执行的时候，会把需要的数据读取到自己的工作内存中保存为副本。它大致对应 JVM 内存区域中的堆和方法区。
+- 工作内存：每个线程独有的私有内存区域，存储了该线程使用的共享变量的副本。它大致对应 JVM 中的虚拟机栈、CPU 高速缓存或寄存器。
+
+**交互规则**：线程不能直接操作主内存中的变量。所有的读取、赋值和计算都必须在工作内存中进行，完成后再同步回主内存。这种机制虽然提升了性能，但也正是引发并发问题的根源。
 
 例如，初始时主内存中 `count = 0`，线程 A 将主内存中的数据 `count = 0` 读入自己的工作内存，然后修改为 `count = 10`，接着把修改后的 `count` 写入主内存中，然后主内存中的值变为 `count = 10`。
 
@@ -1235,27 +1220,19 @@ JMM 是在这些硬件细节之上定义的一套抽象规则。
 
 **为什么需要工作内存？**
 
-因为 CPU 的速度远远快于内存。如果 CPU 每执行一个操作，都去主内存 RAM 中获取数据，性能会非常差。所以现代计算机实际上存在：
+因为 CPU 的速度远远快于内存，如果 CPU 每执行一个操作，都去主内存 RAM 中获取数据，性能会非常差。所以现代计算机实际上存在：
 
 ```
-CPU
- ↓
-寄存器
- ↓
-L1 Cache
- ↓
-L2 Cache
- ↓
-L3 Cache
- ↓
-主内存
+CPU -> 寄存器 -> L1 Cache -> L2 Cache -> L3 Cache -> 主内存
 ```
 
-线程运行时可能会使用这些高速存储结构。这样性能提高了，但是新的问题出现：不同线程看到的数据可能不一样。这就引出了第一个核心问题。
+线程运行时可能会使用这些高速存储结构。这样性能提高了，但是新的问题出现：**不同线程看到的数据可能不一样。**
 
 #### 可见性
 
 可见性：一个线程修改共享变量之后，其他线程能够及时看到这个修改。
+
+由于线程操作的是工作内存中的副本，若不及时同步回主内存，其他线程读取的仍是旧值。JMM 通过 `volatile`、`synchronized` 和 `final` 等机制，强制线程在修改后同步到主内存，并在读取时从主内存加载最新值，从而保障可见性。
 
 假设主内存中初始 `boolean flag = false;`，线程 A 进入如下循环：
 
@@ -1263,11 +1240,9 @@ L3 Cache
 while (!flag) { ... }
 ```
 
-线程 B 将 `flag` 修改为 `true`，按照我们直觉，此刻线程 A 发现 `flag == true` 后，应该退出循环。
+线程 B 将 `flag` 修改为 `true`，按理此刻线程 A 发现 `flag == true` 后，应该退出循环。但是多线程情况下，不一定。可能会发生，线程 B 修改 `flag` 为 `true`，但是线程 A 的工作内存里仍然可能是 `flag = false`，于是 A可能一直循环。这就是可见性问题。
 
-但是多线程情况下，不一定。可能发生，线程 B 修改 `flag` 为 `true`，但是线程 A 的工作内存里仍然可能是 `flag = false`，于是 A可能一直循环。这就是可见性问题。
-
-`volatile` 最核心的用途就是解决这个问题。例如：
+`volatile` 最核心的用途就是解决这个问题，它会强制线程每次读写都直接跟主内存交互。例如：
 
 ```java
 private volatile boolean flag = false;
@@ -1279,22 +1254,13 @@ private volatile boolean flag = false;
 while (!flag) { ... }
 ```
 
-能够看到最新值。所以先记 `volatile` 保证可见性。但这还不是 `volatile` 的全部作用，后面还会讲它的有序性语义。
-
-
+能够看到最新值。所以先记 `volatile` 保证可见性。但这还不是 `volatile` 的全部作用，后面还会涉及它的有序性语义。
 
 #### 原子性
 
-原子性：一个操作或者一组操作，要么全部执行完成，要么完全不执行，中间不能被其他线程干扰。
+原子性：指一个操作或一组操作要么全部执行且不被中断，要么全不执行，中间不能被其他线程干扰。
 
-来看经典代码：
-
-```java
-int count = 0;
-count++;
-```
-
-很多人第一次会认为 `count++;` 就是一个操作，其实不是。它大致可以拆成：
+例如 `count++` 包括了三个操作：
 
 ```
 1. 读取 count
@@ -1313,7 +1279,9 @@ count++;
 
 #### 有序性
 
-例如：
+有序性：指程序执行的顺序按照代码的先后顺序执行。
+
+为了提高性能，编译器和 CPU 可能会对指令进行重排序（Reordering），但通过 happens-before 关系保证跨线程的有序性。虽然在单线程下不影响结果，但在多线程下可能导致逻辑混乱。JMM 通过 `volatile` 和锁机制禁止特定的指令重排，保障多线程环境下的有序性。例如：
 
 ```java
 int a = 1;
@@ -1334,16 +1302,12 @@ a = 1;
 
 在单线程中通常没有问题，因为最终结果一样。但是在多线程下就会出现问题，来看一个经典例子：
 
-线程 A：
-
 ```java
+// 线程 A：
 data = new Data();
 ready = true;
-```
 
-线程 B：
-
-```java
+// 线程 B：
 if (ready) { data.doSomething(); }
 ```
 
@@ -1355,25 +1319,7 @@ if (ready) { data.doSomething(); }
 3. data 指向这个内存
 ```
 
-正常情况下按顺序依次执行 `1 → 2 → 3`，但某些操作之间可能发生重排序：`1 → 3 → 2`。于是可能出现：
-
-```
-分配内存
- ↓
-data 指向内存
- ↓
-ready = true
- ↓
-
-线程 B 看到 ready=true
- ↓
-访问 data
- ↓
-
-但对象初始化尚未完成
-```
-
-这就是有序性问题。所以有序性的核心是多线程环境下，代码执行顺序不能仅凭源代码书写顺序来推断。
+正常情况下按顺序依次执行 `1 → 2 → 3`，但某些操作之间可能发生重排序：`1 → 3 → 2`。于是可能出现分配内存后，`data` 指向分配的内存区域，`ready` 置为 `true`。线程 B 看到 `ready = true`，然后访问 `data`，但此时 `data` 并没有初始化完成。这就是有序性问题。所以有序性的核心是多线程环境下，代码执行顺序不能仅凭源代码书写顺序来推断。
 
 **为什么 JVM 要允许指令重排序呢？**
 
@@ -1390,87 +1336,53 @@ CPU 完全可以在等待 A 的同时，先执行 B，这样可以提高 CPU 利
 
 ##### happens-before
 
-`happens-before` 可以理解为：如果操作 A happens-before 操作 B，那么 JMM 保证 A 的执行结果对 B 可见，并且 A 在内存语义上先于 B。
+`happens-before`（先行发生） 时 JMM 的核心原则，它规定：如果操作 A happens-before 操作 B，那么 JMM 保证 A 的执行结果对 B 可见，并且 A 在内存语义上先于 B。
 
-注意：`happens-before` 并不单纯等价于时间上 A 一定比 B 早执行，它更强调 `可见性和有序性`。也就是：
-
-```
-A happens-before B 意味着：A 的结果对 B 可见，并且 JVM 不能进行破坏这种关系的重排序
-```
+> 注意：`happens-before` 并不单纯等价于时间上 A 一定比 B 早执行，它更强调 `可见性和有序性`。也就是：A happens-before B 意味着：A 的结果对 B 可见，并且 JVM 不能进行破坏这种关系的重排序
 
 **happens-before 的核心规则**
 
 面试不一定要把所有规则背下来，但下面几个必须掌握。
 
-1. 程序顺序规则，同一个线程中：
+1. 程序顺序规则：在单线程内，前面的操作 happens-before 后面的操作。
 
    ```java
    int a = 10;
    int b = a + 1;
    ```
 
-   前面的操作 `a = 10` happens-before `b = a + 1`。注意这说的是 JMM 的语义顺序，不代表 CPU 绝对不会做任何内部重排序。只要最终单线程行为符合程序语义即可。
+   同一个线程中，前面的操作 `a = 10` happens-before 后面的操作 `b = a + 1`。注意这说的是 JMM 的语义顺序，不代表 CPU 绝对不会做任何内部重排序。只要最终单线程行为符合程序语义即可。
 
-2. Monitor 锁规则
-
-   对一个锁的 `unlock` 操作 happens-before 后续对同一个锁的 `lock` 操作。例如：
-
-   线程 A：
+2. Monitor 锁规则：对一个锁的 `unlock` 操作 happens-before 后续对同一把锁的 `lock` 操作。例如：
 
    ```java
+   // 线程 A：
    synchronized (lock) {
        value = 10;
    }
-   ```
-
-   线程 B：
-
-   ```java
+   
+   // 线程 B：
    synchronized (lock) {
        System.out.println(value);
    }
    ```
 
-   关系：
+   线程 A 执行后解锁，因此 B 可以看到 A 的修改。这就是为什么 `synchronized` 不仅有互斥性，还有可见性。
 
-   ```
-   线程 A：
-   value = 10
-      ↓
-   unlock(lock)
-   
-         happens-before
-   
-   线程 B：
-   lock(lock)
-      ↓
-   读取 value
-   ```
-
-   因此 B 可以看到 A 的修改。这就是为什么 `synchronized` 不仅有互斥性，还有可见性。
-
-3. volatile 规则
-
-   对于一个 `volatile` 变量，对它的写 happens-before 后续对它的读。例如：
-
-   线程 A：
+3. volatile 规则：对于一个 `volatile` 变量的写操作 happens-before 后续对它的读。例如：
 
    ```java
+   // 线程 A：
    data = 100;
-   flag = true;
-   ```
-
-   其中 `volatile boolean flag;`。
-
-   线程 B：
-
-   ```java
+   volatile boolean flag = true;
+   
+   // 线程 B：
    if (flag) {
        System.out.println(data);
    }
    ```
 
-   存在：
+   那么：
 
    ```
    线程 A：
@@ -1486,13 +1398,12 @@ A happens-before B 意味着：A 的结果对 B 可见，并且 JVM 不能进行
    读取 data
    ```
 
-   因此，如果 B 读到 `flag == true`，那么之前 `data = 100` 也能够正确地对 B 可见。这就是 `volatile` 非常重要的“发布”能力。
+   因此，如果 B 读到 `flag == true`，那么之前 `data = 100` 也能够正确地对 B 可见。
 
-4. Thread.start() 规则
-
-   线程 A：
+4. Thread.start() 规则：`Thread.start()` happens-before 线程内的任何操作。例如：
 
    ```java
+   // 线程 A：
    int a = 10;
    thread.start();
    ```
@@ -1507,85 +1418,23 @@ A happens-before B 意味着：A 的结果对 B 可见，并且 JVM 不能进行
    线程 B 能看到 a=10
    ```
 
-5. Thread.join() 规则
+5. Thread.join() 规则：线程的所有操作 happens-before `Thread.join()` 返回。
 
-   假设，线程 B：`result = 100;` 然后结束。线程 A：
+   例如，线程 B：`result = 100;` 然后结束。线程 A：
 
    ```java
    threadB.join();
    System.out.println(result);
    ```
 
-   线程 B 中的操作 `result = 100`，happens-before：`join()` 返回后的线程 A 操作。所以 A 能看到 B 执行完成前的结果。
+   线程 B 中的操作 `result = 100` happens-before `join()` 返回后的线程 A 操作。所以 A 能看到 B 执行完成前的结果。
 
-6. 传递性
+6. 传递性：如果 A happens-before B，且 B happens-before C，则 A happens-before C。
 
-   如果：
-
-   ```
-   A happens-before B
-   B happens-before C
-   ```
-
-   那么：
-
-   ```
-   A happens-before C
-   ```
-
-   这个非常重要。很多 JMM 的推理，本质就是靠传递性建立的。
 
 ### 多线程问题
 
-真正进入 Java 并发核心之后，最关键的问题是：多个线程共享内存。比如：
-
-```java
-class Counter {
-    private int count = 0;
-    public void increment() {
-        count++;
-    }
-}
-```
-
-多个线程同时调用 `increment();`，最终结果可能不正确。因为 `count++;` 并不是一个原子操作，大致可以拆成：
-
-```
-读取 count
-    ↓
-count + 1
-    ↓
-写回 count
-```
-
-假设 `count = 10`，两个线程同时执行：
-
-```
-线程 A：读取 10
-线程 B：读取 10
-
-线程 A：计算 11
-线程 B：计算 11
-
-线程 A：写入 11
-线程 B：写入 11
-```
-
-理论执行两次后，`count` 的值应该为 `12`，实际却可能为 `11`。所以 Java 并发后面所有机制，基本都围绕三个核心问题展开：原子性、可见性、有序性。
-
-例如：
-
-- `synchronized`：原子性 + 可见性 + 有序性约束。
-- `volatile`：可见性 + 有序性。
-- CAS：实现无锁原子操作。
-- `Lock`：显式锁。
-- AQS：很多 JUC 同步组件的基础。
-- `AtomicInteger`：基于 CAS 的原子类。
-- 线程池：管理线程生命周期和资源。
-
-现在就可以理解 Java 多线程为什么难？
-
-核心就是三个问题。
+现在就可以理解 Java 多线程为什么难？核心就是三个问题：
 
 - 原子性，多个操作可能交叉执行。例如 `count++;`；
 - 可见性，线程 A 改了 `flag = true;`，线程 B 可能看不到；
@@ -1602,27 +1451,32 @@ count + 1
       操作被打断    数据看不到     指令重排序
 ```
 
+所以 Java 并发后面所有机制，基本都围绕三个核心问题展开：原子性、可见性、有序性。例如：
+
+- `synchronized`：原子性 + 可见性 + 有序性约束。
+- `volatile`：可见性 + 有序性。
+- CAS：实现无锁原子操作。
+- `Lock`：显式锁。
+- AQS：很多 JUC 同步组件的基础。
+- `AtomicInteger`：基于 CAS 的原子类。
+- 线程池：管理线程生命周期和资源。
+
 #### volatile 解决什么问题？
 
-这时候就可以自然引出 `volatile`。例如：
+`volatile` 解决可见性和有序性。
+
+- 对于可见性：强制线程每次读取变量时都从主内存中获取最新值，每次写入变量时都立刻刷回主内存。确保一个线程的修改对其他线程立即可见。
+- 通过插入内存屏障，禁止编译器和 CPU 对 `volatile` 变量的读写操作进行特定的指令重排序。
+
+适用场景：双重检查锁定（DCL）单例模式中防止指令重排、作为多线程间的状态标志位（如 `running = false`）。
+
+例如：
 
 ```java
 private volatile boolean running = true;
 ```
 
-`volatile` 主要解决：可见性+有序性。即：
-
-```
-volatile 写
-    ↓
-及时对其他线程可见
-
-同时提供一定的内存屏障语义
-    ↓
-禁止某些危险重排序
-```
-
-但 `volatile` 不能保证复合操作的原子性。例如：
+即，volatile 写 `running` 时，及时对其他线程可见，同时提供一定的内存屏障语义，禁止某些危险重排序。但 `volatile` 不能保证复合操作的原子性。例如：
 
 ```java
 volatile int count;
@@ -1633,68 +1487,55 @@ count++;
 
 #### synchronized 解决什么问题？
 
-`synchronized` 可以解决原子性、可见性和有序性问题。
+`synchronized` 解决原子性、可见性和有序性问题，它是 Java 提供的重量级锁机制，它是并发安全的“全能选手”。
 
-为什么？
+- 对于原子性，`synchronized` 同一时间只允许一个线程进入临界区。所以：
 
-对于原子性，`synchronized` 同一时间只允许一个线程进入临界区。所以：
+  ```java
+  synchronized (lock) {
+      count++;
+  }
+  ```
 
-```java
-synchronized (lock) {
-    count++;
-}
-```
+  不会交叉执行。
 
-不会交叉执行。
+- 对于可见性，在加锁和解锁时，JMM 会强制刷新工作内存。
 
-对于可见性，
+  ```
+  unlock
+  happens-before
+  后续 lock
+  ```
 
-```
-unlock
-happens-before
-后续 lock
-```
+  所以前一个线程的修改能被后面的线程看到。
 
-所以前一个线程的修改能被后面的线程看到。
+- 对于有序性，锁的内存语义限制了会破坏 happens-before 的重排序。
 
-对于有序性，锁的内存语义限制了会破坏 happens-before 的重排序。
-
-所以，保证了原子性、可见性和有序性。
+适用场景：需要保证多个操作的绝对安全、复杂的临界区代码、不希望开发者手动处理底层同步细节的场景。
 
 #### CAS 解决什么问题？
 
-CAS（Compare And Swap）,核心解决：某个共享变量修改操作的原子性
+CAS（Compare-And-Swap）是一种硬件级别的原子操作，它比较内存中的某个值是否为预期值，如果是就更新为新值，不是就不动。整个比较和交换的过程是一条 CPU 指令完成的，不可能被打断。
 
-例如：
+解决了无锁原子性和锁竞争带来的性能问题。
 
-```
-count：
-10 → 11
-```
+- 对于无锁原子性：通过“比较并交换”指令，在不加锁的情况下保证单个变量操作的原子性。如果内存值与预期不符，则循环重试（自旋）。
+- 对于锁竞争带来的性能问题：避免了 `synchronized` 等悲观锁在多线程竞争时引发的线程上下文切换和阻塞开销。
 
-CAS 会做先判断
-
-```
-当前值是不是 10？
-
-是 -> 原子地改成 11
-不是 -> 修改失败
-```
-
-整个：比较 + 修改，由硬件提供原子保证。所以：
+整个比较 + 修改，由硬件提供原子保证。所以：
 
 ```java
 AtomicInteger count = new AtomicInteger();
 count.incrementAndGet();
 ```
 
-不需要 `synchronized`，也能安全做原子加一。可以暂时理解为 CAS 主要解决原子更新问题。而 Java 的 `AtomicInteger` 等原子类内部还会结合 volatile / VarHandle 等内存语义，保证必要的线程可见性。
+不需要 `synchronized`，也能安全做原子加一。所以，CAS 的核心能力是原子条件更新，而 Java 原子类还配套提供相应的内存可见性和有序性语义。
 
-所以不要简单理解成 CAS 只和原子性有关，完全不涉及内存可见性。
-
-更准确的说法是 CAS 的核心能力是原子条件更新，而 Java 原子类还配套提供相应的内存可见性和有序性语义。
+适用场景：高并发下的简单变量更新（如计数器、状态机）、构建无锁数据结构（如 `ConcurrentHashMap`、`BlockingQueue`）。
 
 ### 总结
+
+`volatile`、`synchronized`、CAS 三者对比：
 
 | 机制           | 原子性           | 可见性                   | 有序性           | 是否阻塞   |
 | -------------- | ---------------- | ------------------------ | ---------------- | ---------- |
@@ -1702,126 +1543,29 @@ count.incrementAndGet();
 | `synchronized` | ✅                | ✅                        | ✅                | 可能阻塞   |
 | CAS            | ✅ 原子更新       | ✅ 通常配合原子类内存语义 | ✅ 有相应内存语义 | 通常不阻塞 |
 
-**一个完整示例**
-
-假设：
-
-```java
-class Task {
-    private int result;
-    private boolean finished;
-
-}
-```
-
-线程 A：
-
-```java
-result = calculate();
-finished = true;
-```
-
-线程 B：
-
-```java
-if (finished) {
-    System.out.println(result);
-}
-```
-
-存在两个问题：
-
-- 可见性
-
-  A 修改：
-
-  ```
-  finished = true
-  ```
-
-  B 不一定马上看到。
-
-- 有序性
-
-
-
-
-
-第二个：
+一张图总结：
 
 ```
-有序性
+                    Java 内存模型 JMM
+                         ↓
+              主内存 ←→ 工作内存
+                         ↓
+               多线程共享数据访问
+          ┌──────────────┼──────────────┐
+          ↓              ↓              ↓
+        原子性          可见性          有序性
+          │              │              │
+      count++         缓存/副本        指令重排序
+      非原子           不一致
+          └──────────────┼──────────────┘
+                         ↓
+                  happens-before
+                  定义同步关系
+       ┌─────────────────┼────────────────┐
+       ↓                 ↓                ↓
+    volatile        synchronized        CAS
+ 可见性 + 有序性    三者都能保证      原子条件更新
 ```
-
-A 的：
-
-```
-result = calculate();
-
-finished = true;
-```
-
-必须保证 B 在观察到：
-
-```
-finished == true
-```
-
-时，`result` 已经正确发布。
-
-于是可以：
-
-```
-private int result;
-private volatile boolean finished;
-```
-
-线程 A：
-
-```
-result = calculate();
-finished = true;
-```
-
-线程 B：
-
-```
-if (finished) {
-    System.out.println(result);
-}
-```
-
-利用：
-
-```
-volatile 写
-happens-before
-volatile 读
-```
-
-建立：
-
-```
-线程 A：
-
-result = xxx
-   ↓
-finished = true
-   ↓
-=======================
-      happens-before
-=======================
-   ↓
-读取 finished == true
-   ↓
-读取 result
-
-线程 B
-```
-
-于是 B 能正确观察到 `result`。
-
-这就是 JMM 真正要解决的问题。
 
 ## 锁
 
@@ -2681,111 +2425,484 @@ B = 新值
 
 #### acquire/release
 
+## ThreadLocal
+
+````
+ThreadLocal 属于高频题，要搞清楚：
+
+```
+Thread
+↓
+ThreadLocalMap
+↓
+Entry
+↓
+key = WeakReference<ThreadLocal>
+value = Object
+```
+
+以及：
+
+> 为什么 ThreadLocal 会导致内存泄漏？
+````
+
 
 
 ## 并发工具类
 
-> ```
-> CountDownLatch
-> CyclicBarrier
-> Semaphore
-> CompletableFuture
-> ThreadLocal
-> ```
->
-> ThreadLocal 属于高频题，要搞清楚：
->
-> ```
-> Thread
-> ↓
-> ThreadLocalMap
-> ↓
-> Entry
-> ↓
-> key = WeakReference<ThreadLocal>
-> value = Object
-> ```
->
-> 以及：
->
-> > 为什么 ThreadLocal 会导致内存泄漏？
+```
+java.util.concurrent
+│
+├── 线程同步工具
+│   ├── CountDownLatch
+│   ├── CyclicBarrier
+│   ├── Semaphore
+│   ├── Exchanger
+│   └── Phaser
+│
+├── 锁
+│   ├── Lock
+│   ├── ReentrantLock
+│   ├── ReadWriteLock
+│   ├── ReentrantReadWriteLock
+│   ├── StampedLock
+│   └── Condition
+│
+├── 原子类
+│   ├── AtomicInteger
+│   ├── AtomicLong
+│   ├── AtomicReference
+│   ├── LongAdder
+│   └── ...
+│
+├── 并发容器
+│   ├── ConcurrentHashMap
+│   ├── CopyOnWriteArrayList
+│   ├── BlockingQueue
+│   └── ...
+│
+└── 线程池
+    ├── Executor
+    ├── ExecutorService
+    ├── ThreadPoolExecutor
+    └── ScheduledThreadPoolExecutor
+```
 
-### CountDownLatch
+### 线程同步工具
 
-### CyclicBarrier
+这类工具专门用于解决多线程之间的协调与通信问题，是日常开发中的高频考点和实用工具：
 
-### Semaphore
+- **CountDownLatch（倒计时门闩）**：允许一个或多个线程等待其他线程完成一系列操作后才继续执行。它是一次性的，常用于分布式系统中等待多个服务初始化完成，或并发测试中等待所有子任务结束。
+- **CyclicBarrier（循环屏障）**：让一组线程互相等待，直到所有线程都到达某个屏障点（Barrier）时，才能一起继续执行。与 CountDownLatch 不同，它是可重用的，适用于多阶段数据处理（如 ETL 流程）或图形渲染中的分块处理。
+- **Semaphore（信号量）**：本质上是一个计数器，用于控制同时访问特定资源的线程数量。常见应用场景包括数据库连接池管理、API 接口限流控制等。
+- **Exchanger（数据交换器）**：专门用于实现两个线程之间的数据交换，适用于流水线作业中的数据交接或加密解密过程中的密钥交换。
 
-### CompletableFuture
-
-### ThreadLocal
+#### CountDownLatch
 
 
 
-## 并发集合
+#### CyclicBarrier
 
-> 重点：
->
-> ```
-> ConcurrentHashMap
-> CopyOnWriteArrayList
-> BlockingQueue
-> ```
->
-> 尤其是 ConcurrentHashMap：
->
-> ```
-> JDK 7
-> Segment + HashEntry
-> 
-> JDK 8
-> Node[] + CAS + synchronized
-> ```
+#### Semaphore
 
-### ConcurrentHashMap
+### 锁机制
 
-### CopyOnWriteArrayList
+JUC 提供了比 `synchronized` 更精细、更灵活的显式锁控制体系（底层大多基于 AQS 框架实现）：
 
-### BlockingQueue
+- **ReentrantLock（可重入锁）**：支持公平锁/非公平锁切换、可中断锁获取、超时等待等特性，适用于需要响应中断的长时间任务或公平调度场景。
+- **ReadWriteLock（读写锁）**：通过读写分离提升并发度。读锁可被多个线程共享，写锁独占，非常适合缓存系统等读多写少的场景。
+- **StampedLock（邮戳锁）**：在 Java 8 引入，支持乐观读模式，在读多写少场景下性能优于 ReadWriteLock，但需注意其不可重入的特性。
+
+#### ReentrantLock
+
+#### ReadWriteLock
+
+
+
+
+
+### 原子操作类
+
+基于 CAS（Compare-And-Swap）硬件级指令实现的无锁编程利器，性能远超传统的锁机制：
+
+- **基本类型原子类**：如 `AtomicInteger`、`AtomicLong`、`AtomicBoolean`，提供线程安全的自增、自减、比较并交换等操作，适用于高并发计数器、状态标志等。
+- **引用与数组类型**：如 `AtomicReference`、`AtomicIntegerArray`，用于对象或数组的原子更新。
+- **解决 ABA 问题**：`AtomicStampedReference` 通过引入版本号，解决了 CAS 操作中值被修改回原值导致的逻辑漏洞。
+- **高并发累加器**：Java 8 引入的 `LongAdder`，在极高并发下比 `AtomicLong` 具有更好的吞吐量。
+
+#### AtomicInteger
+
+#### AtomicLong
+
+
+
+### 异步计算
+
+用于处理耗时任务，避免阻塞主线程：
+
+- **Future / FutureTask**：表示一个异步计算的结果，可以通过它来检查计算是否完成、获取结果或取消任务。
+- **CompletableFuture**：扩展了 Future 接口，支持链式调用、组合多个异步操作、异常处理等，是实现响应式编程的强大工具。
+
+#### Future
+
+#### CompletableFuture
+
+
+
+### 并发容器
+
+#### ConcurrentHashMap
+
+#### CopyOnWriteArrayList
+
+#### BlockingQueue
 
 
 
 ## 线程池
 
-> 线程池属于必须完全掌握的内容：
->
-> ```
-> ThreadPoolExecutor
-> │
-> ├── corePoolSize
-> ├── maximumPoolSize
-> ├── keepAliveTime
-> ├── workQueue
-> ├── threadFactory
-> └── RejectedExecutionHandler
-> ```
->
-> 必须能完整回答：
->
-> > 一个任务提交到线程池之后，到底经历了什么？
->
-> 流程大致是：
->
-> ```
-> 任务到来
->   ↓
-> 线程数 < corePoolSize
->   → 创建核心线程
->   ↓ 否
-> 加入阻塞队列
->   ↓ 队列满
-> 线程数 < maximumPoolSize
->   → 创建非核心线程
->   ↓ 否
-> 拒绝策略
-> ```
->
-> 然后继续准备生产问题：
->
-> > 线程池参数应该怎么配置？
+Java 线程池（ThreadPool）是 Java 并发编程中管理线程的核心组件。它的核心思想是通过“池化资源管理”来预先创建并复用一组线程，从而避免频繁创建和销毁线程带来的高昂开销，同时限制最大并发数以防止系统资源耗尽。
+
+**为什么要使用线程池？**
+
+如果每来一个请求就：
+
+```java
+new Thread(() -> {
+    doTask();
+}).start();
+```
+
+会有以下问题：
+
+- 线程创建和销毁有成本。
+
+  线程需要自己的：
+
+  ```
+  虚拟机栈
+  程序计数器
+  本地方法栈
+  操作系统线程资源
+  ```
+
+  频繁创建和销毁线程会产生额外开销。
+
+- 线程数量不可控。
+
+  例如突然来了 100000 个请求，如果给每个请求都创建一个线程的话，那么就需要大量线程，而线程太多会造成：
+
+  ```
+  内存消耗增加
+  上下文切换频繁
+  CPU 调度压力增加
+  甚至 OOM
+  ```
+
+  线程池则可以只用 20 工作线程来处理请求，其余的请求排队等待执行，从而把并发度控制在合理范围。
+
+### ThreadPoolExecutor
+
+Java 线程池主要位于 `java.util.concurrent`，也就是 JUC。
+
+核心体系：
+
+```
+Executor
+   ↑
+ExecutorService
+   ↑
+AbstractExecutorService
+   ↑
+ThreadPoolExecutor
+```
+
+最顶层：
+
+```java
+public interface Executor {
+    void execute(Runnable command);
+}
+```
+
+只定义了一件事情是提交任务，例如：
+
+```java
+executor.execute(task);
+```
+
+真正最核心的线程池实现是 `ThreadPoolExecutor`，学习 Java 线程池，重点基本就是理解这个类。
+
+#### 核心参数
+
+```java
+public ThreadPoolExecutor(
+        int corePoolSize,
+        int maximumPoolSize,
+        long keepAliveTime,
+        TimeUnit unit,
+        BlockingQueue<Runnable> workQueue,
+        ThreadFactory threadFactory,
+        RejectedExecutionHandler handler
+)
+```
+
+1. `corePoolSize` 核心线程数
+
+   表示线程池长期保留的核心线程数量。即使这些线程空闲也不会被回收，除非设置了 `allowCoreThreadTimeOut`。
+
+   > 核心线程数的设置？
+   >
+   > 对于 CPU 密集型：
+   >
+   > 例如：大量计算、加解密、图像处理、压缩、算法计算等。线程基本一直占用 CPU，通常线程数不宜太大。
+   >
+   > 设置为 `CPU 核数` 或者 `CPU 核数 + 1` 即可。
+   >
+   > 对于 IO 密集型：
+   >
+   > 例如：数据库访问、RPC、HTTP 调用、磁盘 IO 等。线程经常处于等待，CPU 大部分时间其实空着，比如总执行时间 100ms，其中 CPU 计算 10ms，等待 IO 90ms。因此可以增加线程数。
+   >
+   > 设置为 `线程数 ≈ CPU 核数 × (1 + 等待时间 / 计算时间)`。但是估算，实际生产环境应结合CPU 利用率、响应时间、吞吐量、数据库连接池线程数、下游承载能力、压测结果来综合考虑调整。
+
+2. `maximumPoolSize` 最大线程数
+
+   线程池允许创建的最大线程数量。
+
+3. `keepAliveTime` 空闲存活时间
+
+   当线程数大于核心线程数时，非核心线程空闲多长时间后被销毁。
+
+4. `unit` 时间单元
+
+   `keepAliveTime` 的时间单位（如秒、毫秒）。
+
+5. `workQueue` 任务队列
+
+   用于缓存等待执行任务的阻塞队列（如 `ArrayBlockingQueue`、`LinkedBlockingQueue`、`SynchronousQueue`）。当核心线程都在忙时，新来的任务不会马上创建非核心线程，而是先进入阻塞队列。
+
+   > 为什么不是先增加线程处理请求，而是要进入队列排队？
+   >
+   > 因为线程的创建是有代价的，每创建一个线程起码占用 1MB 栈空间，操作系统还要维护线程上下文、调度开销等。如果任务突然来一波就疯狂创建线程，系统资源很快就会耗尽，CPU 光切换上下文都忙不过来了。
+   >
+   > 而队列的作用就是削峰填谷，任务暂时堆在队列里，让现有线程慢慢消化。如果队列都塞满了说明真扛不住了，这时候再增加线程。
+
+6. `threadFactory` 线程工厂
+
+   用于创建新线程的工厂，通常用于给线程自定义名字（例如：`order-worker`），方便排查问题。
+
+   > 之所以让自定义线程名是因为默认线程名通常是 `pool-7-thread-13`，在线上排产问题是不容易直接看出是什么业务。
+
+7. `handler` 拒绝策略
+
+   当线程数和队列都达到上限时，对新提交任务的处理策略。
+
+   四种拒绝策略：
+
+   - AbortPolicy（默认）：直接抛出 `RejectedExecutionException` 异常，阻止系统正常工作。
+   - CallerRunsPolicy：由提交该任务的线程（调用者线程）自己执行该任务，起到一种反压（限流）的效果。
+   - DiscardPolicy：直接静默丢弃新提交的任务，不抛出任何异常。
+   - DiscardOldestPolicy：丢弃队列中最旧（等待时间最长）的任务，然后尝试重新提交当前新任务。
+
+#### 工作流程
+
+整个流程可以记成：
+
+```
+提交任务
+   ↓
+当前线程数 < corePoolSize？
+   │
+   ├── 是 → 创建核心线程执行
+   │
+   └── 否
+         ↓
+    workQueue 能否入队？
+         │
+         ├── 能 → 进入队列
+         │
+         └── 不能
+               ↓
+       当前线程数 < maximumPoolSize？
+               │
+               ├── 是 → 创建非核心线程执行
+               │
+               └── 否 → 拒绝策略
+```
+
+#### execute() 和 submit() 的区别
+
+线程池提交任务有两个常见方法：`execute()` 和 `submit()`。
+
+`execute()`：
+
+```java
+executor.execute(() -> {
+    doTask();
+});
+```
+
+只能提交 `Runnable`，没有返回值，执行时抛异常会直接打印堆栈。
+
+`submit()`：
+
+```java
+Future<Integer> future = executor.submit(() -> {
+    return 100;
+});
+```
+
+可以提交 `Runnable` 或 `Callable`，然后返回一个 `Future` 对象可以获取执行结果或异常信息。
+
+还有一个很重要的异常处理区别。
+
+如果：
+
+```java
+execute(() -> {
+    throw new RuntimeException("error");
+});
+```
+
+异常可以传播到工作线程的未捕获异常处理流程。
+
+而：
+
+```java
+Future<?> future = submit(() -> {
+    throw new RuntimeException("error");
+});
+```
+
+异常通常被包装进 `Future`，需要调用 `future.get();` 时才会以 `ExecutionException` 表现出来。
+
+因此使用 `submit()` 后如果完全不处理 Future，很容易把任务异常“藏起来”。
+
+#### 线程池状态
+
+`ThreadPoolExecutor` 内部有几个重要状态：
+
+```
+RUNNING 正常运行：接收新任务，处理队列任务
+SHUTDOWN 调用 shutdown() 后进入该状态：不接新任务，但继续处理已有任务
+STOP 调用 shutdownNow() 后进入该状态：不接收新任务，不再处理队列任务，尝试中断正在执行的线程
+TIDYING 所有任务终止，workerCount 为 0，准备调用 terminated() 钩子方法
+TERMINATED terminated() 执行完毕，线程池彻底终止
+```
+
+#### shutdown() 和 shutdownNow()
+
+这两种方法都是关闭线程池的方法，核心区别在于对待已提交任务的态度。
+
+`executor.shutdown()`：线程池进入 `SHUTDOWN` 状态，不再接受新任务，但队列中排队的任务和正在执行的任务都会跑完后，才会真正终止线程池。
+
+`executor.shutdownNow()` ：线程池进入 `STOP` 状态，不接受新任务，尝试中断正在执行任务的线程，将尚未执行的队列任务返回。
+
+注意：`shutdownNow()` 也不能保证真的“强制杀死”线程。因为 Java 的中断本身是协作式中断，如果任务代码完全忽略 `Thread.interrupted()`，或者没有响应中断，任务仍可能继续执行。
+
+对于正常退出，用 `shutdown()`；紧急情况退出，用 `shutdownNow()`。
+
+#### 为什么不建议使用 Executors 工具类创建线程池？
+
+JDK 的 `Executors` 虽然提供了一些快速创建线程池的 API，例如：
+
+```java
+Executors.newFixedThreadPool(10); // 固定线程数
+Executors.newSingleThreadExecutor(); // 单线程池
+Executors.newCachedThreadPool(); // 缓存线程池
+Executors.newScheduledThreadPool(5); // 定时任务线程池
+```
+
+虽然用起来方便，但生产环境中通常推荐：显式使用 `ThreadPoolExecutor`，明确设置线程数、队列容量、线程工厂和拒绝策略。
+
+那么为什么不建议使用 Executors 工具类呢？
+
+比如：
+
+```java
+Executors.newFixedThreadPool(10);
+```
+
+内部使用的任务队列类似 `LinkedBlockingQueue`，容量非常大。
+
+如果任务生产速度持续高于消费速度，就会导致队列不断增加，占用大量堆内存，可能出现 OOM。
+
+而 `Executors.newCachedThreadPool();` 其最大线程数非常大，并且搭配 `SynchronousQueue`，任务一多，就可能疯狂创建线程，最终可能导致线程过多、上下文切换严重、内存耗尽。
+
+所以生产环境一般更希望，所有关键参数都明确可控。
+
+#### 完整的线程池示例
+
+```java
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class ThreadPoolDemo {
+    public static void main(String[] args) {
+        AtomicInteger index = new AtomicInteger();
+
+        ThreadFactory threadFactory = task -> {
+            Thread thread = new Thread(task);
+            thread.setName("order-worker-" + index.incrementAndGet());
+            return thread;
+        };
+
+        ThreadPoolExecutor executor =
+                new ThreadPoolExecutor(
+                        4,
+                        8,
+                        60,
+                        TimeUnit.SECONDS,
+                        new ArrayBlockingQueue<>(100),
+                        threadFactory,
+                        new ThreadPoolExecutor.CallerRunsPolicy()
+                );
+
+        try {
+            for (int i = 0; i < 1000; i++) {
+                int taskId = i;
+                executor.execute(() -> {
+                    System.out.println(Thread.currentThread().getName() + " execute task " + taskId);
+                });
+            }
+        } finally {
+            executor.shutdown();
+        }
+    }
+}
+```
+
+这就是生产代码比较应该有的思路：
+
+```
+核心线程数
+最大线程数
+队列容量
+线程名称
+拒绝策略
+关闭线程池
+```
+
+都明确指定。
+
+### 总结
+
+本质上线程池是在平衡工作线程、请求的大量任务和等待队列。也就是：
+
+```
+                   大量任务
+                      ↓
+                 ThreadPool
+                /           \
+               ↓             ↓
+         工作线程          等待队列
+```
+
+如果线程太少，CPU / IO 资源没有充分利用，任务等待时间增加。
+
+线程太多，上下文切换增加，内存消耗增加，下游压力增加。
+
+队列太小：容易触发拒绝；队列太大：任务积压严重，响应时间越来越长，甚至 OOM。
+
+所以线程池调优本质上不是“线程越多越快”，而是在吞吐量、延迟、资源占用和系统稳定性之间做平衡。
 
