@@ -1567,29 +1567,8 @@ count.incrementAndGet();
  可见性 + 有序性    三者都能保证      原子条件更新
 ```
 
-## 锁
 
-> 建议形成一个完整的锁体系：
->
-> ```
-> synchronized
-> ├── 对象锁
-> ├── 类锁
-> ├── monitor
-> └── 锁优化
-> 
-> Lock
-> ├── ReentrantLock
-> ├── ReentrantReadWriteLock
-> └── Condition
-> 
-> AQS
-> ├── state
-> ├── CAS
-> ├── CLH 队列
-> └── acquire/release
-> ```
->
+
 > 这里尤其要深入：
 >
 > ```
@@ -1600,13 +1579,13 @@ count.incrementAndGet();
 > ReentrantLock 原理
 > ```
 
-### synchronized
+## synchronized
 
 > `synchronized` 是 Java 提供的内置同步机制，可以修饰实例方法、静态方法和代码块。实例同步方法锁的是当前对象，静态同步方法锁的是 Class 对象，代码块锁的是显式指定的对象。它底层基于对象 Monitor 实现，同一个 Monitor 同一时刻只能被一个线程持有，因此能够保证临界区操作的互斥性和原子性。同时，Monitor 的解锁 happens-before 后续对同一个 Monitor 的加锁，因此还能够保证线程之间的内存可见性。`synchronized` 还是可重入锁，同一线程可以重复进入同一个 Monitor。字节码层面，同步代码块主要通过 `monitorenter/monitorexit` 实现，同步方法则通过 `ACC_SYNCHRONIZED` 标志实现。
 
 `synchronized` 本质上解决的是多个线程并发访问共享资源时，保证同一时刻只有符合条件的线程进入临界区，并建立必要的内存可见性和 happens-before 关系。
 
-#### 常见写法
+### 常见写法
 
 `synchronized` 有三种常见写法。
 
@@ -1690,7 +1669,7 @@ public synchronized void method() { ... }
 
 锁粒度更小。
 
-#### synchronized 锁的是什么？
+### synchronized 锁的是什么？
 
 不是“锁代码”。而是锁对象对应的 Monitor。例如：
 
@@ -1849,19 +1828,106 @@ Monitor
 
 总结，`synchronized` 锁的是 lock 对象对应的 Monitor，`synchronized` 具有原子性、可见性、可重入性。
 
-### Lock
+## AQS
 
-#### ReentrantLock
+> AQS，全称 AbstractQueuedSynchronizer，是 JUC 中用于构建锁和同步器的基础框架。它内部通过一个 volatile 修饰的 state 表示同步状态，通过 CAS 保证 state 修改的原子性。当线程获取同步状态失败时，会将线程封装成节点加入 FIFO 同步队列，并通过 LockSupport.park() 阻塞；当其他线程释放同步状态后，再通过 LockSupport.unpark() 唤醒等待线程重新竞争资源。
+>
+> AQS 同时支持独占模式和共享模式，例如 ReentrantLock 使用独占模式，而 Semaphore 和 CountDownLatch 使用共享模式。具体同步语义由子类通过 tryAcquire、tryRelease、tryAcquireShared、tryReleaseShared 等模板方法实现。
 
-#### ReentrantReadWriteLock
+AQS 是 Java 并发里非常核心的一块。前面学过的 CAS、`ReentrantLock`、`CountDownLatch`、`Semaphore`，到 AQS 这里基本就能串起来了。
 
-#### Condition
+先给一句最重要的定义：AQS（AbstractQueuedSynchronizer）是一个用来构建锁和同步器的基础框架。
 
-### AQS
+它本身通常不是直接给业务代码使用的，而是给：
 
-#### state
+```
+ReentrantLock
+CountDownLatch
+Semaphore
+ReentrantReadWriteLock
+...
+```
 
-#### CAS
+这些并发组件提供底层的：状态管理 + CAS + 线程排队 + 线程阻塞/唤醒 能力。
+
+**为什么需要 AQS？**
+
+假设你现在要自己实现一个锁：
+
+```java
+class MyLock { ... }
+```
+
+你至少要解决这些问题：
+
+```
+1. 怎么表示锁有没有被占用？
+2. 多个线程抢锁时，怎么保证只有一个成功？
+3. 抢不到锁的线程怎么办？
+4. 这些线程怎么排队？
+5. 当前线程释放锁之后，唤醒谁？
+6. 如何实现公平锁？
+7. 如何支持可重入？
+8. 如何支持中断？
+9. 如何支持超时获取锁？
+```
+
+如果每一种锁都重新实现一遍，复杂度非常高。所以 Java 抽象出了 AQS：
+
+```
+                    AQS
+        ┌────────────┼────────────┐
+      state         CAS        等待队列      这三个是 AQS 的核心
+        │            │            │
+     状态管理      原子修改      线程排队   
+```
+
+然后具体的同步器只需要告诉 AQS：“什么情况下算获取成功？”，以及“什么情况下算释放成功？”
+
+至于排队、阻塞、唤醒、CAS、中断处理，这些通用逻辑，AQS 帮你完成。
+
+### state
+
+AQS 内部维护了一个非常重要的状态值：
+
+```java
+private volatile int state;
+```
+
+可以把它理解成当前同步器的状态。但是 `state` 到底代表什么，AQS 自己并不知道，它不关系这些 `state` 的具体含义。它的含义由具体的子类决定。例如：
+
+- 对于 `ReentrantLock`
+
+  `state = 0` 表示锁没人持有，`state = 1` 表示锁被某个线程持有一次。如果是可重入，`state = 2` 表示同一个线程获取了两次锁。所以 `ReentrantLock` 的 `state` 表示重入次数。
+
+- 对于 `CountDownLatch`
+
+  `state = 3` 表示还有 3 线程需等待，待等待线程每调用一次 `countDown()`，执行 `state--`，当 `state == 0` 时，等待线程就可以继续执行。所以 `CountDownLatch` 的 `state` 表示剩余计数。
+
+- 对于 `Semaphore`
+
+  `state = 3` 表示还有 3 个许可证，每调用一次 `acquire()` 相当于 `state--`。每调用一次 `release()` 相当于 `state++`。所以 `Semaphore` 的 `state` 表示剩余许可证数量。
+
+**state 必须是 volatile 类型**
+
+因为：
+
+```java
+private volatile int state;
+```
+
+这个变量会被多个线程访问。比如：
+
+```
+Thread A 修改 state
+Thread B 读取 state
+```
+
+需要保证 A 修改之后，B 能立即看到。所以需要 `volatile` 来保证可见性，但是之前讲 JMM 的时候已经知道 `volatile` 只能保证可见性，不能保证复合操作的原子性。比如：`state++` 并不是原子操作。
+
+所以 AQS 还需要第二样东西 —— CAS。
+
+### CAS
 
 > CAS 是 Compare And Swap，是一种基于乐观锁思想的原子操作。它包含当前值、期望值和新值三个参数，只有当前值与期望值相同时才把它更新成新值，否则更新失败并通常通过自旋重新尝试。CAS 的比较和交换由 JVM 和 CPU 的原子指令保证，因此可以在不使用传统互斥锁的情况下完成一些线程安全的状态更新。Java 的 AtomicInteger、ConcurrentHashMap、AQS 等都大量使用 CAS。它的主要问题是高竞争时自旋会消耗 CPU，以及可能出现 ABA 问题，ABA 可以通过版本号或 AtomicStampedReference 解决。
 
@@ -1900,14 +1966,6 @@ if (V == A) {
 }
 ```
 
-也就是：
-
-```text
-当前值 == 期望值？
-├── 是 → 更新成新值，成功
-└── 否 → 不修改，失败
-```
-
 关键在于“比较 + 修改”这两个动作由 CPU 保证是一个原子操作。因此不会发生比较完之后、修改之前，被另一个线程插进来的问题。
 
 举一个并发场景。假设：`value = 10`，线程 A 和线程 B 都读到了 `10`，然后都准备执行 `value++`。如果不用同步机制：
@@ -1939,17 +1997,13 @@ if (V == A) {
 期望 value = 10
 ```
 
-发现 `11 != 10`，所以 B 的 CAS 失败。
-
-B 重新读取 `value = 11`，重新计算得到 `12`，再执行：
+发现 `11 != 10`，所以 B 的 CAS 失败。B 重新读取 `value = 11`，重新计算得到 `12`，再执行：
 
 ```java
 CAS(value, 11, 12);
 ```
 
-这次成功。最终 `value = 12`。
-
-所以完整过程可以理解成：
+这次成功。最终 `value = 12`。所以完整过程可以理解成：
 
 ```text
 读取旧值
@@ -1957,9 +2011,7 @@ CAS(value, 11, 12);
 计算新值
 ↓
 CAS
-│
 ├── 成功 → 结束
-│
 └── 失败
      ↓
    重新读取
@@ -1969,97 +2021,35 @@ CAS
    再 CAS
 ```
 
-这种不断重试的过程，就是：CAS + 自旋。
+这种不断重试的过程，就是 **CAS + 自旋**。
 
-Java 中最典型的 CAS 应用就是 `AtomicInteger`。例如：
-
-```java
-AtomicInteger count = new AtomicInteger(0);
-count.incrementAndGet();
-```
-
-多个线程同时执行 `count.incrementAndGet();` 仍然能够保证原子性。它的逻辑可以简化理解成：
-
-```java
-int oldValue;
-int newValue;
-
-do {
-    oldValue = get();
-    newValue = oldValue + 1;
-} while (!compareAndSet(oldValue, newValue));
-
-return newValue;
-```
-
-比如：
-
-```text
-oldValue = 10
-newValue = 11
-```
-
-然后：
-
-```java
-compareAndSet(10, 11);
-```
-
-如果失败，则重新读、重新算、重新 CAS，直到成功。
+但是如果一直让这些线程自旋，那么 CPU 就在空转。因此 AQS 不会让这些线程一直空转，它会把获取资源失败的线程放入等待队列，然后阻塞。
 
 **为什么 CAS 比 `synchronized` 看起来更“轻”？**
 
 传统锁的思路：
 
 ```text
-线程 A
-↓
-拿锁
-↓
-修改
-↓
-释放锁
-
-线程 B
-↓
-拿不到锁
-↓
-阻塞 / 等待
+线程 A -> 拿锁 -> 修改 -> 释放锁
+线程 B -> 拿不到锁 -> 阻塞 / 等待
 ```
 
 CAS 的思路：
 
 ```text
-线程 A
-↓
-尝试修改
-↓
-成功
-
-
-线程 B
-↓
-尝试修改
-↓
-失败
-↓
-重新尝试
+线程 A -> 尝试修改 -> 成功
+线程 B -> 尝试修改 -> 失败 -> 重新尝试
 ```
 
-因此 CAS 通常属于乐观锁思想。
-
-它假设大多数情况下不会发生冲突，我先直接尝试修改；真的冲突了再重试。
+因此 CAS 通常属于乐观锁思想。它假设大多数情况下不会发生冲突，我先直接尝试修改，如果真的冲突了再重试。
 
 而 `synchronized`、`ReentrantLock` 更接近悲观锁：我认为可能发生冲突，所以修改之前先把资源锁住。
 
 可以这样理解：
 
 ```text
-悲观锁：
-先锁，再干活
-
-乐观锁 / CAS：
-先干，提交的时候检查有没有冲突
+悲观锁：先锁，再干活
+乐观锁 / CAS：先干，提交的时候检查有没有冲突
 ```
 
 **CAS 为什么是原子的？**
@@ -2093,316 +2083,109 @@ value = newValue
 
 CAS 有三个非常重要的问题。
 
-第一，CAS 自旋可能浪费 CPU。
+- CAS 自旋可能浪费 CPU
 
-比如竞争非常激烈：
+  比如竞争非常激烈：
 
-```text
-100 个线程
-↓
-同时 CAS 一个变量
-```
+  ```text
+  100 个线程
+  ↓
+  同时 CAS 一个变量
+  ```
 
-可能出现：
+  可能出现：
 
-```text
-线程 A 成功
+  ```text
+  线程 A 成功
+  
+  线程 B 失败 → 重试
+  线程 C 失败 → 重试
+  线程 D 失败 → 重试
+  ...
+  ```
 
-线程 B 失败 → 重试
-线程 C 失败 → 重试
-线程 D 失败 → 重试
-...
-```
+  大量线程不停地
 
-大量线程不停：
+  ```text
+  读取
+  计算
+  CAS
+  失败
+  重试
+  ```
 
-```text
-读取
-计算
-CAS
-失败
-重试
-```
+  它们不会阻塞睡眠，而是在 CPU 上不断运行。
 
-它们不会阻塞睡眠，而是在 CPU 上不断运行。
+  所以 CAS 在低竞争场景性能很好，但高竞争场景可能因为大量自旋消耗 CPU。这也是为什么不存在 CAS 永远比锁快。竞争激烈时，阻塞式锁反而可能更加合理。
 
-所以 CAS 在低竞争场景性能很好，但高竞争场景可能因为大量自旋消耗 CPU。
+- CAS 通常只能方便地保证单个共享状态的原子更新
 
-这也是为什么不存在 CAS 永远比锁快。竞争激烈时，阻塞式锁反而可能更加合理。
+  例如：
 
-------
+  ```java
+  AtomicInteger count;
+  ```
 
-第二，CAS 通常只能方便地保证单个共享状态的原子更新。
+  很好处理。但如果一个业务操作需要同时保证：
 
-例如：
+  ```text
+  balance
+  +
+  status
+  +
+  version
+  ```
 
-```java
-AtomicInteger count;
-```
+  三个变量一起修改，要么全部成功，要么全部失败。单个 CAS 就比较难处理。
 
-很好处理。
+  通常可以：
 
-但如果一个业务操作需要同时保证：
+  - 把多个状态封装到一个不可变对象里，然后 CAS 整个引用；
+  - 使用锁；
+  - 使用更高层的并发结构。
 
-```text
-balance
-+
-status
-+
-version
-```
+  所以 CAS 特别适合单一状态或可封装成一个状态的原子更新。
 
-三个变量一起修改：
+- ABA 问题
 
-```text
-要么全部成功
-要么全部失败
-```
+  假设一个变量初始为 `A`，线程 1 读取 `A`，然后线程 1 暂停。
 
-单个 CAS 就比较难处理。
+  线程 2 读取 `A`，然后把该变量值修改为 `B`，接着再把该变量值改回 `A`。
 
-通常可以：
+  此刻，线程 1 恢复后执行 CAS，发现期望值等于当前值，于是 CAS 成功。
 
-- 把多个状态封装到一个不可变对象里，然后 CAS 整个引用；
-- 使用锁；
-- 使用更高层的并发结构。
+  但是线程 1 不知道：这个 A 已经不是“原来的那个状态过程”了，中间曾经被改成过 B。
 
-所以 CAS 特别适合单一状态或可封装成一个状态的原子更新。
+  这就是 ABA 问题。
 
-------
+  CAS 只检查当前值是不是 A？却不知道它中间有没有发生过变化？
 
-第三，也是最高频的：ABA 问题。
+  解决 ABA 问题的方式：
 
-假设一个变量初始：
+  给数据增加版本号。例如一开始：
 
-```text
-A
-```
+  ```text
+  A, version=1
+  ```
 
-线程 1 读取：
+  线程 2：
 
-```text
-A
-```
+  ```text
+  A,1
+  ↓
+  B,2
+  ↓
+  A,3
+  ```
 
-然后线程 1 暂停。
+  虽然值重新变成 A，但是版本已经：
 
-线程 2：
+  ```text
+  1 → 3
+  ```
 
-```text
-A
-↓
-B
-↓
-A
-```
+  线程 1 原本期望 `A,1`，现在看到 `A,3`，于是 CAS 失败。
 
-最后又变回了 A。
-
-线程 1 恢复后执行 CAS：
-
-```text
-期望值 = A
-当前值 = A
-```
-
-发现：
-
-```text
-A == A
-```
-
-于是 CAS 成功。
-
-但是线程 1 不知道：这个 A 已经不是“原来的那个状态过程”了，中间曾经被改成过 B。
-
-这就是 ABA：
-
-```text
-A
-↓
-B
-↓
-A
-```
-
-CAS 只检查当前值是不是 A？却不知道它中间有没有发生过变化？
-
-------
-
-解决 ABA 的经典办法是：给数据增加版本号。
-
-例如一开始：
-
-```text
-A, version=1
-```
-
-线程 2：
-
-```text
-A,1
-↓
-B,2
-↓
-A,3
-```
-
-虽然值重新变成 A，但是版本已经：
-
-```text
-1 → 3
-```
-
-线程 1 原本期望：
-
-```text
-A,1
-```
-
-现在看到：
-
-```text
-A,3
-```
-
-于是 CAS 失败。
-
-Java 中有 `AtomicStampedReference` 就是这种思想。
-
-例如：
-
-```java
-AtomicStampedReference<String> ref =
-        new AtomicStampedReference<>("A", 1);
-```
-
-同时维护：
-
-```text
-引用值
-+
-版本戳 stamp
-```
-
-从而解决 ABA。
-
-------
-
-这和你前面问过的 MySQL 乐观锁其实非常像。
-
-例如数据库：
-
-```sql
-UPDATE products
-SET stock = stock - 1,
-    version = version + 1
-WHERE id = 1
-  AND version = #{oldVersion};
-```
-
-逻辑就是：
-
-```text
-CAS：
-
-当前值 == 期望值？
-→ 才更新
-
-
-数据库 version 乐观锁：
-
-当前 version == 我之前读取的 version？
-→ 才 UPDATE
-```
-
-本质思想高度相似：更新之前验证“这个状态有没有被别人修改过”。
-
-------
-
-再回到刚才讲的 `ConcurrentHashMap`。
-
-假设：
-
-```text
-table[5] == null
-```
-
-线程 A 想插入 NodeA，线程 B 想插入 NodeB。
-
-如果普通：
-
-```java
-table[5] = node;
-```
-
-可能相互覆盖。
-
-ConcurrentHashMap 可以通过 CAS 表达：
-
-```text
-CAS(
-    table[5],
-    null,
-    NodeA
-)
-```
-
-意思是：只有 table[5] 仍然是 null，我才把 NodeA 放进去。
-
-如果另一个线程抢先放进去了：
-
-```text
-table[5] != null
-```
-
-CAS 就失败，然后线程重新走后续逻辑。
-
-所以我们之前说：
-
-```text
-ConcurrentHashMap put
-
-桶为空
-→ CAS
-
-桶不为空
-→ synchronized
-```
-
-现在就能理解为什么空桶适合 CAS 了：
-
-```text
-只是把：
-
-null
-↓
-Node
-
-这样一个简单状态进行原子替换
-```
-
-不需要直接上锁。
-
-------
-
-最后把 CAS 记成：
-
-```text
-CAS(V, A, B)
-
-V = 当前值
-A = 期望值
-B = 新值
-
-      V == A ?
-      /      \
-    是        否
-    ↓         ↓
- V = B      更新失败
- 成功         ↓
-             重试
-```
 
 它的优缺点可以总结为：
 
@@ -2419,34 +2202,190 @@ B = 新值
 | ABA 解决       | 版本号 / `AtomicStampedReference`    |
 | Java 应用      | Atomic 类、ConcurrentHashMap、AQS 等 |
 
+### CLH（同步队列）
 
+AQS 内部维护了一个基于 CLH 队列改进的 FIFO 双向链表。当线程获取资源失败时，会被封装成一个节点（Node）加入到队列尾部。每个 Node 记录了等待的线程、前驱/后继节点指针以及节点的等待状态（如 CANCELLED、SIGNAL 等）。
 
-#### CLH 队列
+可以先抽象理解为：
 
-#### acquire/release
+```
+head
+ ↓
+[Node A] → [Node B] → [Node C]
+                            ↑
+                           tail
+```
+
+每个节点里最重要的信息就是：
+
+```
+Node
+│
+├── Thread
+├── 前驱节点
+├── 后继节点
+└── 等待状态
+```
+
+于是 `Thread B` 抢锁失败，包装成 `Node`，加入等待队列
+
+`Thread C` 也是，抢锁失败，包装成 `Node`，加入队列队尾。
+
+最终，当前持锁线程是 `Thread A`，等待队列中如下：
+
+```
+head
+ ↓
+[B] → [C] → [D]
+             ↑
+            tail
+```
+
+然后 `Thread B，Thread C，Thread D` 这些线程一般会被 `LockSupport.park()` 阻塞。因此它们不会一直占用 CPU。
+
+### AQS 的核心设计模式
+
+AQS 采用了经典的模板方法模式，将“通用逻辑”与“特有逻辑”完美分离：
+
+- **模板方法（AQS 提供，不可重写）**：如 `acquire()`、`release()`、`acquireShared()` 等。它们定义了获取和释放资源的标准流程（例如：先尝试获取 -> 失败则入队 -> 阻塞等待 -> 唤醒后重试）。
+- **钩子方法（子类必须重写）**：如 `tryAcquire()`、`tryRelease()`、`tryAcquireShared()`、`tryReleaseShared()` 等。上层工具类只需重写这些方法，定义具体的状态变更逻辑（比如：state 怎么变才算获取成功）。
+
+### AQS 的工作流程
+
+当线程调用 `acquire()` 尝试获取资源时，AQS 会执行以下标准流程：
+
+1. **尝试获取**：首先调用子类的 `tryAcquire()` 尝试快速获取资源。如果成功，流程结束。
+2. **封装入队**：如果获取失败，AQS 会将当前线程封装成一个 Node 节点，通过 CAS 快速尾插法加入 CLH 同步队列。
+3. **阻塞等待**：节点在队列中会不断尝试获取资源。如果失败，会通过 `LockSupport.park()` 将线程安全地挂起（进入 WAITING 状态），避免 CPU 忙等。
+4. **唤醒重试**：当持有资源的线程释放锁时，AQS 会检查队列，使用 `LockSupport.unpark()` 唤醒后继节点。被唤醒的线程会重新从 `tryAcquire()` 开始竞争资源。
+
+### AQS 的两大同步模式
+
+AQS 支持两种资源访问模式，覆盖了绝大多数并发场景：
+
+- **独占模式（Exclusive）**：同一时刻只有一个线程能访问资源。典型实现：`ReentrantLock`。
+- **共享模式（Shared）**：允许多个线程同时访问资源。典型实现：`Semaphore`、`CountDownLatch`、`ReadWriteLock`（读锁部分）。
 
 ## ThreadLocal
 
-````
-ThreadLocal 属于高频题，要搞清楚：
+> `ThreadLocal` 是 Java 提供的线程本地存储机制，用于实现线程之间的数据隔离。同一个 ThreadLocal 对象在不同线程中可以对应不同的 value。
+>
+> 它的底层并不是 ThreadLocal 自己维护一个以线程为 key 的 Map，而是每个 Thread 对象内部维护一个 ThreadLocalMap，其中 ThreadLocal 对象作为 key，线程自己的数据作为 value。因此 `set()` 和 `get()` 都是先获取当前线程，再操作当前线程对应的 ThreadLocalMap。
+>
+> ThreadLocalMap 中 Entry 的 key 对 ThreadLocal 使用弱引用，而 value 是强引用，因此如果 ThreadLocal 被 GC，但线程长期存活，可能出现 key 为 null、value 仍然无法释放的情况。特别在线程池中线程生命周期很长，因此 ThreadLocal 使用结束后应该在 finally 中调用 `remove()`，同时防止线程复用导致的数据污染。
+
+`ThreadLocal`（线程本地变量）是 Java 并发编程中一个非常独特且重要的组件。如果说前面讲的 `CountDownLatch`、`ReentrantLock` 都是在解决“多线程如何安全地共享数据”，那么 `ThreadLocal` 的核心思想则是反其道而行之：“既然共享容易出问题，那就干脆不共享，让每个线程拥有自己独立的变量副本。”
+
+它的核心作用是：为每个使用该变量的线程提供独立的变量副本，从而实现线程间的数据隔离，从根本上规避了多线程共享数据带来的并发安全问题。
+
+**为什么需要 ThreadLocal？**
+
+假设多个线程都操作同一个共享变量：
+
+```java
+private static String userId;
+```
+
+线程 A：`userId = "1001"`，线程 B：`userId = "2002"`。因为这是共享变量，就可能出现：
 
 ```
-Thread
-↓
-ThreadLocalMap
-↓
-Entry
-↓
-key = WeakReference<ThreadLocal>
-value = Object
+Thread A 设置 1001
+        ↓
+Thread B 设置 2002
+        ↓
+Thread A 再读取
+        ↓
+读到 2002
 ```
 
-以及：
+这时候通常有两种思路。
 
-> 为什么 ThreadLocal 会导致内存泄漏？
-````
+第一种：共享数据 + 加锁，例如：synchronized 和 ReentrantLock
 
+第二种：干脆不共享
 
+而 `ThreadLocal` 就属于第二种：
+
+```
+Thread A → 自己的 value
+
+Thread B → 自己的 value
+
+Thread C → 自己的 value
+```
+
+因此，锁解决的是“多个线程如何安全地共享数据”，ThreadLocal 解决的是“如何让每个线程拥有自己的数据”。
+
+这个区别非常重要。
+
+### 核心 API
+
+`ThreadLocal` 的使用极其简单，核心 API 只有四个：
+
+- **`set(T value)`**：设置当前线程的变量副本。
+- **`get()`**：获取当前线程的变量副本。
+- **`remove()`**：清除当前线程的变量副本（**极其重要，防内存泄漏必用**）。
+- **`initialValue()`**：设置初始值（通常通过重写该方法或使用 `ThreadLocal.withInitial()` 实现）。
+
+示例代码：
+
+```java
+public class ThreadLocalDemo {
+    private static final ThreadLocal<String> LOCAL = new ThreadLocal<>();
+
+    public static void main(String[] args) {
+        new Thread(() -> {
+            LOCAL.set("A");
+            System.out.println(LOCAL.get());
+        }).start();
+
+        new Thread(() -> {
+            LOCAL.set("B");
+            System.out.println(LOCAL.get());
+        }).start();
+    }
+}
+```
+
+### 底层原理
+
+这是 `ThreadLocal` 最核心的底层秘密：
+
+- **数据存在哪里？** 变量副本并不是存在 `ThreadLocal` 对象本身里，而是存在**当前线程对象（Thread）内部**。每个 `Thread` 对象内部都维护了一个 `ThreadLocalMap`。
+- **Key 和 Value 是什么？** 在这个 Map 中，**Key 是当前的 `ThreadLocal` 对象本身**，**Value 是我们存入的变量副本**。
+- **弱引用（WeakReference）机制**：为了防止 `ThreadLocal` 对象本身被回收时导致内存泄漏，Map 的 Key 被设计为弱引用。当外部没有强引用指向 `ThreadLocal` 时，Key 会被垃圾回收器回收，但 Value 是强引用，依然存在。
+
+> 强引用与弱引用？
+>
+> 强引用：
+>
+> 这是 Java 中最常见、默认的引用类型。我们平时写代码时直接赋值，比如 `Object obj = new Object();`，这就是强引用。
+>
+> - **GC 的态度**：**宁死不回收**。只要一个对象存在强引用指向它，垃圾回收器（GC）就绝对不会回收它，哪怕内存已经溢出（OOM），GC 也会抛出异常，而不是回收这些强引用对象。
+> - **生命周期**：只有当显式地将引用赋值为 `null`，或者引用超出了作用域，对象才会变成可被回收的状态。
+>
+> 弱引用：
+>
+> 弱引用是一种“非常脆弱”的引用。它不会阻止对象被 GC 回收。在 Java 中，通常通过 `java.lang.ref.WeakReference` 类来实现。
+>
+> - **GC 的态度**：**随时可以回收**。无论当前内存是否充足，只要 GC 扫描到只被弱引用指向的对象，就会**立即将其回收**。
+> - **生命周期**：极其短暂，完全取决于 GC 何时运行。
+
+### 内存泄漏
+
+由于 `ThreadLocalMap` 的 Key 是弱引用，Value 是强引用。如果线程长时间存活（例如在线程池中），且在使用完 `ThreadLocal` 后没有手动清理，Key 被回收了，但 Value 还在，就会导致**内存泄漏**。
+
+**铁律**：使用 `ThreadLocal` 时，**务必在 `finally` 块中调用 `remove()` 方法**，及时清理数据。
+
+```java
+ThreadLocal<String> local = new ThreadLocal<>();
+try {
+    local.set("当前用户信息");
+    // 业务逻辑...
+} finally {
+    local.remove(); // 必须清理！
+}
+```
 
 ## 并发工具类
 
@@ -2499,11 +2438,196 @@ java.util.concurrent
 
 #### CountDownLatch
 
+CountDownLatch（倒计时门闩）：允许一个或多个线程等待其他线程完成一系列操作后才继续执行。本质上就是一个计数器，初始值由构造函数指定，每调用一次 `countDown()` 减 1，减到 0 时所有调用 `await()` 的线程被唤醒。
 
+它是一次性的，常用于分布式系统中等待多个服务初始化完成，或并发测试中等待所有子任务结束。
+
+示例程序：
+
+```java
+public class CountDownLatchDemo {
+    public static void main(String[] args) throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(3);
+
+        for (int i = 1; i <= 3; i++) {
+            final int index = i;
+
+            new Thread(() -> {
+                try {
+                    System.out.println("线程 " + index + " 开始执行");
+                    Thread.sleep(1000);
+                    System.out.println("线程 " + index + " 执行完成");
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } finally {
+                    latch.countDown();
+                }
+            }).start();
+        }
+
+        System.out.println("主线程等待...");
+        latch.await();
+        System.out.println("所有任务执行完成，主线程继续执行");
+    }
+}
+```
+
+核心方法有两个分别是 `await()` 和 `countDown()`。
+
+- `await()`：让当前线程阻塞，直到计数器设置的 3 变为 0，才结束阻塞；
+- `countDown()`：计数器减 1。
 
 #### CyclicBarrier
 
+CyclicBarrier（循环屏障）：让一组线程到达屏障点时被阻塞，直到最后一个线程也到达屏障点（Barrier）时，这组线程才能一起继续执行。
+
+与 CountDownLatch 不同，`CyclicBarrier` 的计数器在达到 0（所有线程到达）后，会自动重置为初始值。这意味着它可以被反复使用，非常适合多阶段任务处理，比如 ETL 流程或图形渲染中的分块处理。
+
+示例代码：
+
+```java
+public class CyclicBarrierDemo {
+    public static void main(String[] args) {
+        CyclicBarrier barrier = new CyclicBarrier(3, () -> {
+            System.out.println("所有线程都到达屏障，开始下一阶段");
+        });
+
+        for (int i = 1; i <= 3; i++) {
+            final int index = i;
+
+            new Thread(() -> {
+                try {
+                    System.out.println("线程 " + index + " 执行第一阶段");
+                    Thread.sleep(index * 1000);
+                    System.out.println("线程 " + index + " 到达屏障");
+                    barrier.await();
+                    System.out.println("线程 " + index + " 执行第二阶段");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }).start();
+        }
+    }
+}
+```
+
+构造函数有两个，分别为：
+
+- `CyclicBarrier(int parties)`：初始化需要等待的线程数量；
+- `CyclicBarrier(int parties, Runnable barrierAction)`：除了指定线程数，还可以传入一个“屏障动作”。当最后一个线程到达屏障时，会优先执行这个 `Runnable` 任务。
+
+核心方法：
+
+- `await()`：每个线程完成自己的准备工作后调用此方法，表示自己“已到达屏障”，然后阻塞等待其他线程。
+
 #### Semaphore
+
+Semaphore（信号量）：本质上是一个计数器，用于控制同时访问特定资源的线程数量。
+
+常见应用场景包括数据库连接池管理、API 接口限流控制等。
+
+示例代码：
+
+```java
+public class SemaphoreDemo {
+    public static void main(String[] args) {
+        Semaphore semaphore = new Semaphore(3);
+
+        for (int i = 1; i <= 10; i++) {
+            final int index = i;
+
+            new Thread(() -> {
+                try {
+                    semaphore.acquire();
+                    System.out.println("线程 " + index + " 获得资源");
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } finally {
+                    semaphore.release();
+                    System.out.println("线程 " + index + " 释放资源");
+                }
+            }).start();
+        }
+    }
+}
+```
+
+核心方法：
+
+- `acquire()`：获取一个许可。如果当前没有可用许可，线程会被阻塞等待，直到有其他线程释放许可或被中断。
+- `release()`：释放一个许可，将其归还给信号量，唤醒等待中的线程。
+
+#### Exchanger
+
+Exchanger（数据交换器）：提供一个同步点（交换点），当且仅当两个线程都到达该同步点时，它们会原子性地交换彼此携带的数据，然后各自拿着对方的数据继续往下执行。
+
+适用场景：
+
+- 双缓冲（Double Buffering）数据交换：这是最经典的场景。线程 A 负责往缓冲区写数据，线程 B 负责从缓冲区读数据。当 A 写满后，与 B 交换缓冲区。A 拿到空缓冲区继续写，B 拿到满缓冲区继续读。完美实现了数据生成与处理的分离。
+
+例如：
+
+```
+// 初始时：
+Thread A data = "A的数据"
+Thread B data = "B的数据"
+
+// 执行
+exchanger.exchange(data);
+
+// 结果：
+Thread A 得到 B的数据
+Thread B 得到 A的数据
+```
+
+代码实现：
+
+```java
+Exchanger<String> exchanger = new Exchanger<>();
+
+new Thread(() -> {
+    try {
+        String result = exchanger.exchange("A的数据");
+        System.out.println("A收到：" + result);
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+}).start();
+
+new Thread(() -> {
+    try {
+        String result = exchanger.exchange("B的数据");
+        System.out.println("B收到：" + result);
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    }
+}).start();
+
+// 输出结果
+// A收到：B的数据
+// B收到：A的数据
+```
+
+核心方法：
+
+- **`exchange(V x)`**：核心方法。当前线程调用此方法时，会阻塞等待另一个线程。当另一个线程也调用此方法时，双方原子性地交换数据，并返回对方传过来的数据。
+- **`exchange(V x, long timeout, TimeUnit unit)`**：带超时的交换方法。如果在指定时间内没有配对成功，会抛出 `TimeoutException`。这在生产环境中极其重要，可以防止一方异常退出导致另一方永久死锁。
+
+#### Phaser
+
+Phaser（分阶段器）：协调多个线程分阶段执行任务。比如将任务分成多个阶段，在任务执行的各个阶段，必须该阶段所有参与者到达后才能进入下一阶段，支持在运行时动态调整参与者数量。
+
+适用场景：
+
+- 分阶段并行数据处理：如 ETL 流程中的“预处理 → 计算 → 合并 → 输出”，每个阶段都需要等待所有工作线程完成才进入下一阶段，且处理过程中可能会有线程因任务完成而提前退出。
+- 弹性扩容与动态任务分配：在大规模任务中，部分子任务失败需要重试，或者有新的工作线程动态加入分担压力，`Phaser` 能够完美适应这种参与者数量变化的场景。
+
+核心方法：
+
+- **`register()`**：动态注册一个新的参与者。可以在运行时随时调用，增加等待计数。
+- **`arriveAndDeregister()`**：到达当前阶段并注销自己，表示不再参与后续阶段。
+- **`arriveAndAwaitAdvance()`**：核心方法。线程完成当前阶段任务后调用，表示自己已到达，然后阻塞等待其他参与者。当所有参与者都到达后，阶段号自动加 1，进入下一阶段。
 
 ### 锁机制
 
@@ -2514,6 +2638,26 @@ JUC 提供了比 `synchronized` 更精细、更灵活的显式锁控制体系（
 - **StampedLock（邮戳锁）**：在 Java 8 引入，支持乐观读模式，在读多写少场景下性能优于 ReadWriteLock，但需注意其不可重入的特性。
 
 #### ReentrantLock
+
+ReentrantLock（可重入锁）：支持公平锁/非公平锁切换、可中断锁获取、超时等待等特性，适用于需要响应中断的长时间任务或公平调度场景。
+
+> 公平锁与非公平锁：
+>
+> 非公平锁就像没有排队的食堂，谁跑得快谁先打饭（性能高）；公平锁就是严格排队，按先来后到的顺序打饭（不饥饿，但效率稍低）。
+
+ReentrantLock 相比于 Synchronized 提供了更精细、更灵活的锁控制能力。
+
+底层原理是 AQS + CAS，核心是一个 int 类型的 state 变量和一个等待队列。
+
+**与 synchronized 的区别**
+
+| 特性      | synchronized                     | ReentrantLock                                         |
+| --------- | -------------------------------- | ----------------------------------------------------- |
+| 锁类型    | JVM 内置，隐式锁                 | JUC 类库，显式锁                                      |
+| 获取/释放 | JVM 自动释放（隐式锁）           | 必须在 `finally` 中手动调用 `unlock()` 释放（显式锁） |
+| 灵活性    | 无法中断、无法超时、不支持公平锁 | 支持可中断、超时获取、公平锁切换                      |
+| 条件队列  | 只有一个（配合 wait/notify）     | 支持多个 `Condition`，精准唤醒                        |
+| 底层实现  | JVM 层面的 Monitor 机制          | JDK 层面的 AQS 框架                                   |
 
 #### ReadWriteLock
 
@@ -2557,7 +2701,137 @@ JUC 提供了比 `synchronized` 更精细、更灵活的显式锁控制体系（
 
 #### BlockingQueue
 
+严格来说它是“并发容器”，但也是非常重要的并发工具。
 
+例如：
+
+```
+生产者
+   │
+   ↓
+BlockingQueue
+   │
+   ↓
+消费者
+```
+
+典型实现：
+
+```
+ArrayBlockingQueue
+LinkedBlockingQueue
+PriorityBlockingQueue
+DelayQueue
+SynchronousQueue
+```
+
+它最重要的能力是：
+
+```
+put()
+take()
+```
+
+例如队列满了：
+
+```
+queue.put(data);
+```
+
+生产者自动阻塞。
+
+队列空了：
+
+```
+queue.take();
+```
+
+消费者自动阻塞。
+
+这样你就不需要自己写：
+
+```
+wait()
+notify()
+```
+
+实际上线程池中的任务队列：
+
+```
+ThreadPoolExecutor
+```
+
+底层使用的就是：
+
+```
+BlockingQueue<Runnable>
+```
+
+### 总结
+
+它们实际上是在解决不同的并发问题。
+
+可以建立这样一个体系：
+
+```
+                    Java 并发工具
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+      数据安全         线程协调          资源管理
+        │                │                │
+        │                │                │
+AtomicXXX          CountDownLatch      Semaphore
+ConcurrentMap      CyclicBarrier       BlockingQueue
+CopyOnWrite        Phaser             ThreadPool
+        │
+        │
+      锁控制
+        │
+synchronized
+ReentrantLock
+ReadWriteLock
+StampedLock
+```
+
+换句话说，遇到一个并发问题，可以先问自己：我要解决的到底是什么问题？
+
+如果是多个线程修改一个变量，考虑：
+
+```
+AtomicXXX
+锁
+```
+
+如果是我要等 10 个任务都完成，考虑：
+
+```
+CountDownLatch
+```
+
+如果是10 个线程必须全部到齐才能进入下一阶段，考虑：
+
+```
+CyclicBarrier
+```
+
+如果是最多允许 10 个线程同时访问，考虑：
+
+```
+Semaphore
+```
+
+如果是生产者和消费者之间传递任务，考虑：
+
+```
+BlockingQueue
+```
+
+如果是大量线程同时安全修改 Map，考虑：
+
+```
+ConcurrentHashMap
+```
 
 ## 线程池
 
