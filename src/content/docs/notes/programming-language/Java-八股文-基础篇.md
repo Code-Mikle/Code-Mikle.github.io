@@ -2513,7 +2513,14 @@ Java 中的注解原理
 
 \- Lambda   - Stream   - Optional   - 函数式接口
 
-
+1. 元空间替代了永久代，永久代回收效率太低，加上 HotSpot 要和 JRockit 合并，JRockit 压根就没有永久代，所以干脆去掉了。
+2. Lambda 表达式，用 `(参数) -> 表达式` 语法实现代码块传递，告别匿名内部类的冗长写法。
+3. 函数式接口，只有一个抽象方法的接口，比如：`Predicate`、`Function`、`Consumer` 是 Lambda 的载体。
+4. 新的日期事件 API，`LocalDate`、`LocalDateTime` 这些不可变类，替代了线程不安全的 Date 和 Calendar。
+5. 接口默认方法和静态方法，允许接口用 `default` 关键字定义方法实现，解决接口扩展时的兼容问题。
+6. Stream 流式接口，声明式处理集合数据，链式调用实现过滤、映射、排序，还支持 `parallelStream` 并行处理。
+7. Optional 类，封装可能为 null 的值，提供 `orElse`、`ifPresent` 等方法优雅处理 null 值，减少 NPE。
+8. 新增了 `CompletableFuture`、`StampedLock` 等并发实现类。
 
 ## 代理
 
@@ -2868,27 +2875,61 @@ UserService.save()
 | `Proxy` + `InvocationHandler` | 字节码增强             |
 | 不能代理接口之外的方法        | 可以代理普通可重写方法 |
 
-## 类加载的过程
-
 
 
 ## Java 中 final、finally 和 finalize 的区别？
 
 
 
-## 什么是 Java 中的双亲委派模型？
 
 
+## BIO、NIO、AIO
 
-## 什么是 BIO、NIO、AIO？
+BIO、NIO、AIO 是 Java 里三种不同的 I/O 模型，核心区别在于线程在等待数据时的行为。
 
+1. BIO
 
+   同步阻塞模型，线程发起 read 调用后就卡在那儿，数据没来之前啥也干不了。一个连接配一个线程，1000 个连接就得开 1000 个线程，线程切换开销直接把 CPU 拖垮。
 
+   适用于连接数少、短连接，比如：传统 Web 应用。
 
+2. NIO
 
+   同步非阻塞模型，线程可以先去干别的，通过 Selector 轮询哪些 Channel 有数据可读。一个线程能管几千个连接，Netty、Tomcat 的 NIO 模式都是这个套路。
 
+   适用于高并发、长连接，比如：Netty、Tomcat。
 
+3. AIO
 
+   异步非阻塞模型，发起读请求后直接返回，操作系统把数据拷贝完了再通过回调通知你。但 Linux 下 AIO 支持一般，实际生产环境用得不多。极少使用。
+
+### Channel
+
+传统 I/O 是单向的，InputStream 只能读、OutputStream 只能写。要实现双向通信，必须要同时持有两个流对象。
+
+Channel 是 Java NIO 里的核心组件，支持双向传输，即一个通道既能读也能写，不用分别写一个输入流和一个输出流。
+
+常用的 Channel 有如下几种：
+
+1. `FileChannel`
+
+   专门用来读写文件，支持内存映射和零拷贝。Kafka、RocketMQ 底层就靠它来实现高性能磁盘读写。
+
+2. `SocketChannel`
+
+   TCP 客户端通道，连上服务器后用它收发数据。
+
+3. `ServerSocketChannel`
+
+   TCP 服务端通道，负责监听接口、接收新连接，每接收一个连接就生成一个 `SocketChannel`。
+
+4. `DatagramChannel`
+
+   UDP 通道，不需要建立连接，直接发数据。
+
+### Selector
+
+Selector 是 Java NIO 里实现 I/O 多路复用的核心组件，一个线程通过 Selector 就能同时监听成百上千个 Channel 的读写事件，不用给每个连接开一个线程。
 
 
 

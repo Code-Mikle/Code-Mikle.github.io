@@ -883,6 +883,12 @@ MySQL 索引可以从 5 个维度来分类。
    ```
 
    这个索引同时属于：`B+ 树索引`、`二级索引`、`唯一索引`、`联合索引`。因此，“联合”和“唯一”显然不是互斥分类。
+   
+   > 最左前缀匹配原则？
+   >
+   > 指的是使用联合索引的时候，查询条件必须从索引的最左列开始匹配。联合索引包括多个列，查询时必须现有第一个列的条件，然后是第二个列的条件，以此类推。
+   >
+   > 这是因为联合索引在 B+ 树中的排列方式是从左到右的顺序。比如联合索引 `(a, b, c)` 会先按 `a` 排序，`a` 相同再按 `b` 排序，`b` 相同再按 `c` 排序。
 
 #### 按特殊用途
 
@@ -932,9 +938,7 @@ CREATE UNIQUE INDEX uk_tenant_username ON user(tenant_id, username);
 
 ### 创建索引的注意事项
 
-创建索引时，核心不是“给经常查询的字段都加索引”，而是：
-
-> 用尽可能少、尽可能高质量的索引，减少查询扫描量，同时控制写入和存储成本。
+创建索引时，核心不是“给经常查询的字段都加索引”，而是用尽可能少、尽可能高质量的索引，减少查询扫描量，同时控制写入和存储成本。
 
 1. 索引不是越多越好。每个索引都占磁盘空间，每次写入都要维护索引的 B+ 树，索引越多写入越慢。
 
@@ -2266,66 +2270,40 @@ SELECT balance FROM account WHERE id = 1;
 
 ## MySQL 的日志
 
-MySql 中的日志可以按所属层次分为三类：
+MySQL 常见日志可以分为两类：
 
-```
-MySQL 日志
-├── InnoDB 事务日志
-│   ├── Redo Log
-│   └── Undo Log
-│
-├── MySQL Server 层日志
-│   ├── Binlog
-│   ├── Error Log
-│   ├── General Query Log
-│   ├── Slow Query Log
-│   └── DDL Log
-│
-└── 复制相关日志
-    └── Relay Log
-```
+- MySQL Server 层日志：`binlog`、错误日志、慢查询日志、General Query Log
+- InnoDB 引擎日志：`redo log`、`undo log`
 
-日常开发和面试中，最重要的是：
-
-> **Redo Log、Undo Log、Binlog。**
-
-其中 Redo Log 和 Undo Log 属于 InnoDB，Binlog 属于 MySQL Server 层。
+日常开发和面试中，最重要的是：**Redo Log、Undo Log、Binlog。**
 
 ### Redo Log
 
-Redo Log，即重做日志，主要用于：保证事务的持久性，并支持数据库崩溃恢复。
+Redo Log，即重做日志，主要用于保证事务的持久性，并支持数据库崩溃恢复。
 
 **为什么需要 Redo Log**
 
 InnoDB 修改数据时，一般不会直接把磁盘中的数据页立即改掉，而是先把数据页加载到 Buffer Pool，在内存中完成修改。
 
 ```
-磁盘数据页
-    ↓
-加载到 Buffer Pool
-    ↓
-修改内存中的数据页
-    ↓
-形成脏页
+磁盘数据页 -> 加载到 Buffer Pool -> 修改内存中的数据页 -> 形成脏页
 ```
 
-如果事务提交时，要求所有脏页立即写回磁盘，就会产生大量随机磁盘 I/O，性能较差。因此 InnoDB 使用 WAL（Write-Ahead Logging），即先写日志，再写数据页。
+如果事务提交时，要求所有脏页立即写回磁盘，就会产生大量随机磁盘 I/O，成本很高，性能较差。因此 InnoDB 使用 WAL（Write-Ahead Logging），即先写日志，再写数据页。
 
 事务提交时，优先确保必要的 Redo Log 按配置写入磁盘；脏页可以由后台线程稍后异步刷入数据文件。数据库异常退出后，InnoDB 可以从最近的 Checkpoint 开始重放 Redo Log，恢复没有完整写入数据文件的修改。
 
 **Redo Log 记录什么**
 
-Redo Log 记录的是物理日志：数据页发生了哪些底层修改，崩溃后应该怎样重做。例如：
+Redo Log 记录的是物理日志，数据页发生了哪些底层修改，崩溃后应该怎样重做。例如：
 
 ```sql
 UPDATE account SET balance = 900 WHERE id = 1;
 ```
 
-可以抽象理解为：将某个数据页中某个位置的内容修改为新值。所以 Redo Log 通常被称为偏物理日志或物理逻辑日志。它不是简单保存原始 SQL：
+具体来说就是“某个数据页的某个偏移量改成了什么值”。所以 Redo Log 通常被称为偏物理日志或物理逻辑日志。它不是简单保存原始 SQL。
 
-```sql
-UPDATE account SET balance = 900 WHERE id = 1;
-```
+注意：Redo Log 是循环写的，空间固定，写满了就得等 checkpoint 推进才能继续。
 
 **Redo Log 的主要作用**
 
@@ -2340,11 +2318,7 @@ Redo Log 使用持续递增的 LSN 标识日志位置；日志不断追加，随
 
 ### Undo Log
 
-Undo Log，即回滚日志，主要用于：事务回滚、MVCC 历史版本读取
-
-**Undo Log 记录什么**
-
-Undo Log 保存的是：如何撤销事务最近一次对聚簇索引记录的修改。
+Undo Log，即回滚日志，保存到是修改之前的信息。
 
 例如数据原来是：`balance = 1000`，执行：
 
@@ -2352,7 +2326,12 @@ Undo Log 保存的是：如何撤销事务最近一次对聚簇索引记录的�
 UPDATE account SET balance = 900 WHERE id = 1;
 ```
 
-Undo Log 中会保留足够的信息，以便把记录恢复为：`balance = 1000`。如果事务执行 ROLLBACK，InnoDB 就根据 Undo Log 逆向撤销修改。
+Undo Log 中会保留足够的信息，以便能够把记录恢复为：`balance = 1000`。如果事务执行 ROLLBACK，InnoDB 就根据 Undo Log 逆向撤销修改。
+
+主要用于：
+
+- 事务回滚
+- MVCC 历史版本读取
 
 **Undo 如何支持 MVCC**
 
@@ -2371,18 +2350,10 @@ Undo Log 不只是用于回滚，还用于构造数据的历史版本。假设�
 当前记录通过隐藏的回滚指针指向 Undo Log，形成版本链。普通快照读执行时：
 
 ```sql
-SELECT balance FROM account  WHERE id = 1;
+SELECT balance FROM account WHERE id = 1;
 ```
 
-如果当前版本对该事务不可见，InnoDB 会沿着 Undo 版本链向前查找，直到找到符合 Read View 可见性规则的版本。因此：
-
-```
-Undo Log
-├── ROLLBACK 时撤销修改
-└── MVCC 时提供历史数据版本
-```
-
-官方文档也明确说明，一致性读取需要旧数据时，会从 Undo Log 记录中取得未修改的数据。
+如果当前版本对该事务不可见，InnoDB 会沿着 Undo 版本链向前查找，直到找到符合 Read View 可见性规则的版本。
 
 **Undo Log 何时删除**
 
@@ -2402,11 +2373,38 @@ Undo Log 堆积
 
 ### Binlog
 
-Binlog，即 Binary Log，属于 MySQL Server 层。它不属于 InnoDB，因此与存储引擎层面的 Redo Log 不同。
+Binlog，即 Binary Log，记录数据库发生的修改，属于逻辑日志。例如：创建表、修改表结构、插入数据、修改数据、删除数据。
 
-Binlog 属于逻辑日志，记录描述数据库变更的事件，例如：创建表、修改表结构、插入数据、修改数据、删除数据。它主要用于：主从复制、基于时间点的数据恢复、审计或数据订阅。
+```sql
+UPDATE user SET age = 20 WHERE id = 1;
+```
 
-官方文档将复制和基于备份的时间点恢复列为 Binlog 的两个核心用途。
+主要用途：
+
+- 主从复制：主库把 binlog 发送给从库，从库重放
+- 数据恢复：通过备份 + binlog 恢复到某个时间点
+- 数据同步：CDC 工具，如 Canal、Debezium 等可以消费 binlog
+
+还有其他用途：
+
+- 审计和检查：binlog 记录了所有数据的变更，便于管理员审计数据修改历史，确定问题根源
+- 灾难恢复：对于以外数据丢失或损坏，通过定期备份和 binlog 结合，可以将数据恢复到最近的正常状态
+
+常见格式：
+
+```
+STATEMENT：记录 SQL
+ROW：记录具体哪一行变成了什么
+MIXED：两者混合
+```
+
+现在通常使用 `ROW`。
+
+### 总结
+
+**为什么 redo log 和 undo log 不直接使用记录 SQL 的方式，而是要去记录具体的修改值？**
+
+因为一个 SQL 语句可能执行的操作很多，会修改大量的数据。那么如果仅仅记录 SQL，而不记录修改前后的值，那么要是这个 SQL 执行一半后数据库宕机重启后，部分数据可能已经完成了部分修改。那么如果再次重新执行 SQL，就会导致部分已经修改的数据被二次修改从而产生错误。
 
 ## MySQL 调优
 
@@ -2561,13 +2559,9 @@ JOIN 顺序或关联字段不合理
 
    - rows 和 filtered
 
-     rows 表示优化器预计需要扫描的行数。
+     rows 表示优化器预计需要扫描的行数。例如 `rows = 1000000` 说明扫描量可能很大。SQL 调优最直接的目标之一就是减少 `rows`。
 
-     例如 `rows = 1000000` 说明扫描量可能很大。SQL 调优最直接的目标之一就是减少 `rows`。
-
-     filtered 表示经过当前条件过滤后，预计保留的数据比例。
-
-     例如 `rows = 100000, filtered = 1%` 说明扫描 10 万行，最后可能只保留 1000 行。
+     filtered 表示经过当前条件过滤后，预计保留的数据比例。例如 `rows = 100000, filtered = 1%` 说明扫描 10 万行，最后可能只保留 1000 行。
 
      如果扫描量很大、过滤比例很低，通常说明索引设计不理想。
 
@@ -2580,11 +2574,11 @@ JOIN 顺序或关联字段不合理
      Using filesort 表示 MySQL 需要额外进行排序，不能直接利用索引顺序返回结果。例如：
 
      ```sql
-     SELECT * FROM user WHERE status = 1 ORDER BY create_time;
+  SELECT * FROM user WHERE status = 1 ORDER BY create_time;
      ```
 
      如果没有合适的联合索引，可能出现 `Using filesort`，`filesort` 并不一定真的在磁盘中排序，只是表示使用了 MySQL 的额外排序算法。
-
+   
      Using temporary 表示 MySQL 使用了临时表。常见于：GROUP BY、DISTINCT、复杂 ORDER BY、UNION、复杂 JOIN，如果临时表过大并落盘，性能可能明显下降。
 
      Using index condition 表示使用了索引条件下推，即 ICP。MySQL 在索引层先过滤部分数据，减少回表数量，通常是有利的。
