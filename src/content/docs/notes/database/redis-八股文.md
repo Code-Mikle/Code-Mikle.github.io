@@ -19,18 +19,77 @@ Redis（Remote Dictionary Server） 是一个基于内存的高性能 Key-Value 
 
 Redis 常见的数据类型主要有五种：String、Hash、List、Set、ZSet。
 
-1. **String** 最基本的类型，能存文本、数字、二进制、JSON等。比如：缓存用户会话、页面数据，分布式锁，计数器，验证码，Token等 
+1. **String** 最基本的类型，能存文本、数字、二进制、JSON等。比如：缓存用户会话，分布式锁，计数器等 
+
+   ```sql
+   SET user:1:name Tom
+   GET user:1:name
+   
+   SET count 10
+   INCR count
+   ```
+
 2. **Hash** 本质上是个键值对集合，特别适合存对象属性。它和直接用 String 存 JSON 的区别是，Hash 可以单独修改某个字段。
-3. **List** 有序的字符串列表，底层是双向链表，支持两端操作。最常用的场景就是消息队列，LPUSH 生产消息，RPOP 消费消息，简单的生产者消费者模式就搞定了。不过真正复杂的消息队列场景通常更推荐 Redis Stream 或 RabbitMQ、Kafka、RocketMQ。
-4. **Set** 是无序且元素不重复的集合，查找和去重（支持集合运算，交集、并集、差集）效率很高。适合做标签系统、记录某个页面的独立访客、共同关注等需要去重或集合运算的场景。
-5. **ZSet（Sorted Set）** 跟 Set 类似，但每个元素都带一个 score 分数用来排序，底层用跳表实现。最典型的就是排行榜，比如游戏积分榜、热搜榜，按 score 排序后直接取 Top N。
+
+   ```sql
+   HSET user:1 name Tom age 20
+   HGET user:1 name
+   HGETALL user:1
+   ```
+
+3. **List** 有序、可重复的字符串列表，底层是双向链表，支持两端操作。
+
+   最常用的场景就是消息队列，LPUSH 生产消息，RPOP 消费消息，简单的生产者消费者模式就搞定了。不过真正复杂的消息队列场景通常更推荐 Redis Stream 或 RabbitMQ、Kafka、RocketMQ。
+
+   ```sql
+   LPUSH message a
+   LPUSH message b
+   
+   RPOP message
+   ```
+
+4. **Set** 是无序、不重复的集合，查找和去重（支持集合运算，交集、并集、差集）效率很高。适合做标签系统、记录某个页面的独立访客、共同关注等需要去重或集合运算的场景。
+
+   ```sql
+   SADD hobbies basketball
+   SADD hobbies football
+   SADD hobbies basketball
+   
+   # 集合运算
+   SINTER user:1:friends user:2:friends  
+   ```
+
+5. **ZSet（Sorted Set）** 有序、不重复，每个元素有 score 分数用来排序，底层用跳表实现。最典型的就是排行榜、延迟队列，比如游戏积分榜、热搜榜，按 score 排序后直接取 Top N。
+
+   ```sql
+   ZADD ranking 100 Tom
+   ZADD ranking 90 Jack
+   ZADD ranking 120 Alice
+   
+   # 获取排行榜前 10
+   ZREVRANGE ranking 0 9 WITHSCORES
+   ```
 
 以及几种常用的特殊数据类型。
 
-1. **BitMap** 用位来存数据，每个 bit 只占 0 或 1，空间利用率极高。比如统计 1000 万用户的签到情况，每个用户只占 1 bit，总共才 1.2 MB。用 SETBIT 设置状态，GETBIT 读取状态。
+1. **Bitmap** 用位来存数据，每个 bit 只占 0 或 1，空间利用率极高。比如统计 1000 万用户的签到情况，每个用户只占 1 bit，总共才 1.2 MB。用 SETBIT 设置状态，GETBIT 读取状态。
 2. **HyperLogLog** 概率性数据结构，专门用来估算基数。不管塞进去多少数据，固定只占 12 KB 内存，代价是有 0.81% 左右的误差。适合统计网站 UV 这种对精度要求不高但数据量巨大的场景。
 3. **GEO** 用来存地理位置，支持经纬度存储和空间查询。底层其实是用 Zset 实现的，经纬度会被编码成 score。典型场景就是“附近的人”、外卖配送距离计算。
 4. **Stream** 专门为消息队列设计的数据结构。相比 List 做队列，Stream 多了两个关键特性：自动生成全局唯一消息 ID，支持消费组模式。相比 Pub/Sub 最大的优势是消息可以持久化。消费者挂了重启还能继续消费。
+
+### String
+
+**String 类型的大小限制**
+
+String 最大能存 512 MB，这是源码中写死的。
+
+无论是网络传输、内存分配还是字符串操作，大字符串都会增加 Redis 服务器的负载。且过大的字符串在 GET、SET、APPEND 等操作都会导致性能瓶颈，主从同步也有延迟风险。
+
+所以官方给字符串的大小做了限制，防止单个键值对占用过多的内容，影响整体性能和稳定性。
+
+实际生产中，单个字符串 10 KB 以内是比较合理的，超过 100 KB 就要考虑拆分了。
+
+
 
 ### ZSet 的原理
 
@@ -221,9 +280,42 @@ C 30
 
 其中 `M` 是返回的元素数量。例如 `ZRANGE ranking 0 9`，获取排行榜前 10 名。或者 `ZRANGEBYSCORE ranking 80 100`，查 score 在 80～100 之间的成员。跳表非常适合这种 `有序 + 范围查询 + 排名查询` 的场景。
 
-## 待整理
+## BigKey 问题
 
-Redis 的 Hash 大 key 怎么优化，以及优化后如何兼容老业务老数据，新业务怎么用优化后的缓存，老缓存删不删
+> Redis 的 Hash 大 key 怎么优化，以及优化后如何兼容老业务老数据，新业务怎么用优化后的缓存，老缓存删不删
+
+Redis 的 BigKey 指的是：某个 key 对应的 value 过大，或者集合类 key 中元素数量过多。比如：String 类型超过 1 MB；Hash、List、Set、ZSet 元素超过 5000 个，实际生产为了性能要求只会更严格。
+
+BigKey 主要会带来几个问题：
+
+- 阻塞 Redis 主线程：Redis 很多命令在主线程执行，如果一次操作 BigKey 耗时很长，会阻塞其他请求。
+- 网络阻塞：例如 `GET` 一个几十 MB 的 String，会产生很大的网络传输。
+- 删除阻塞：直接 `DEL` 一个包含几百万元素的 Hash/List/Set，释放内存本身可能很耗时。
+- 主从同步压力：BigKey 的写入、修改会增加复制流量。
+- 内存分布不均：Redis Cluster 中，如果 BigKey 都落在某一个节点，容易导致节点内存倾斜。
+- 迁移困难：Cluster 扩缩容时迁移 BigKey 成本很高。
+
+解决 BigKey 的方法：
+
+核心思想是避免“单个 key 承载过多数据”，并避免对大 key 做一次性全量操作。
+
+1. 拆分 BigKey：把大对象拆成小对象
+
+2. 不要使用全量查询命令
+
+   例如，对于大 Hash，不要使用 `HGETALL key` 一次全部拿出来，改成 `HSCAN key 0 COUNT 100`。
+
+3. 删除 BigKey 使用 `UNLINK`
+
+   不要 `DEL big:key`，因为 `DEL` 删除复杂大对象时，内存释放可能占用主线程较长时间。更适合 `UNLINK big:key`，`UNLINK` 会先把 key 从 keyspace 中摘掉，再由后台线程异步回收对应内存，从而降低主线程阻塞。
+
+4. 控制集合长度
+
+   例如消息列表 `LPUSH messages xxx`，如果永远不删除，队列内容不断增加，最终就会成为 BigKey。可以使用 `LTRIM messages 0 9999` 限制只保留最近 10000 条记录。
+
+5. 提前监控 BigKey
+
+   常用命令 `redis-cli --bigkeys`，可以扫描 Redis 中较大的 key。
 
 ## Redis 为什么这么快？
 
@@ -516,8 +608,9 @@ GET /product/999999999
   这种方案不会让请求直接打到数据库，但短时间内可能返回旧数据。
 
   > 对于 “key 本身不设置物理过期时间，而是在 value 中保存一个逻辑过期时间” 的解析：
-  >
   > 热点 key 不设置物理过期，是为了保证缓存永远命中；保存逻辑过期时间，是为了让系统知道数据什么时候已经陈旧，并触发异步更新。
+  >
+  > 此处的**物理过期时间**指的是：通过 Redis 的 `EXPIRE` 或 `SET EX` 设置时间，这个是由 Redis 服务器底层提供的功能，过期后会真实删除数据；而逻辑过期时间其实就是 value 中一个用于记录过期时间的字段，过期后，后台异步刷新缓存。
 
 - 热点 key 不设置过期时间：对于极少数长期热点数据，可以不设置过期时间，在数据修改时主动更新或删除缓存。
 
@@ -545,6 +638,78 @@ GET /product/999999999
   2）本地缓存兜底：用 Caffeine 或 Guava Cache 做一层本地缓存，Redis 挂了还能顶一阵。
 
   3）服务熔断与降级：用 Sentinel 或 Hystrix 发现数据库压力过大直接熔断，返回默认值或错误提示（如：直接返回“系统拥挤”之类的提示），防止过多的请求打在数据库上。至少能保证一部分用户是可以正常使用，其他用户多刷新几次也能得到结果，从而保住系统不崩。
+
+### Redis 快速实现布隆过滤器
+
+Redis 实现布隆过滤器，本质上就是利用它非常擅长的两件事：**Bitmap 位图存储 + 哈希定位。**
+
+实际有三种做法：
+
+- 直接使用 Redis 的 Bloom Filter
+- 利用 Redis Bitmap 自己实现
+- 直接用 Redisson 封装好的 `RBloomFilter` （实际项目中使用的方式）
+
+**直接使用 Redis 的 Bloom Filter**
+
+例如 `BF.RESERVE`、`BF.ADD`、`BF.EXISTS`。Redis 官方文档目前提供了完整的 Bloom Filter 命令集。
+
+例如先创建一个容量 100 万、误判率 1% 的过滤器：
+
+```
+BF.RESERVE user:bloom 0.01 1000000
+
+其中：
+user:bloom  → Bloom Filter 的 key
+0.01        → 允许 1% 误判率
+1000000     → 预计存储 100 万个元素
+
+添加用户：
+BF.ADD user:bloom 10001
+BF.ADD user:bloom 10002
+
+判断：BF.EXISTS user:bloom 10001 返回 1 表示可能存在，0 表示一定不存在
+```
+
+`BF.INSERT` 还可以在 Filter 不存在时直接创建并添加元素。
+
+**利用 Redis Bitmap 自己实现**
+
+假设：用 `1000000 bit 的 Bitmap + 3 个 hash 函数` 来构建。
+
+```
+插入 "user:10001"：
+hash1 → 100
+hash2 → 500
+hash3 → 800
+然后：
+SETBIT bloom:user 100 1
+SETBIT bloom:user 500 1
+SETBIT bloom:user 800 1
+
+查询 "user:10001" 时重新算 hash，然后：
+GETBIT bloom:user 100
+GETBIT bloom:user 500
+GETBIT bloom:user 800
+判断：三个值全部 = 1 表示可能存在，任意一个 = 0 表示一定不存在
+```
+
+**直接用 Redisson 封装好的 `RBloomFilter` （实际项目中使用的方式）**
+
+```java
+RBloomFilter<Long> bloomFilter = redissonClient.getBloomFilter("user:bloom");
+bloomFilter.tryInit(1_000_000, 0.01);
+bloomFilter.add(10001L);
+boolean exists = bloomFilter.contains(10001L);
+```
+
+你只需要告诉它：
+
+```
+预计元素数量：1,000,000
+误判率：1%
+```
+
+底层的 Bitmap 多大、需要几个 Hash、每个元素映射到哪些 bit，都帮你处理了。
 
 ## Redis 中的 Lua 脚本
 
