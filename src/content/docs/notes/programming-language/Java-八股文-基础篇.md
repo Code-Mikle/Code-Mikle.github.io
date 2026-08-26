@@ -1275,7 +1275,7 @@ class Buffer {
 
 Java 泛型是一种参数化类型机制，允许把类型作为参数传递给类、接口和方法。
 
-泛型主要用于在编译期提供类型安全检查，编译器能在写代码的时候就发现类型不匹配，不用得到程序运行时才发现，从而抛 ClassCastException。同时减少手动强制类型转换，例如 `List<String>` 可以保证集合中只能按照 String 类型使用元素。
+泛型主要用于在编译期提供类型安全检查，编译器能在写代码的时候就发现类型不匹配，不用等到程序运行时才发现，从而抛 ClassCastException。同时减少手动强制类型转换，例如 `List<String>` 可以保证集合中只能按照 String 类型使用元素。
 
 下述是一个没有泛型的示例：
 
@@ -1289,11 +1289,8 @@ class Box {
         return value;
     }
 }
-```
 
-使用：
-
-```java
+// 使用：
 Box box = new Box();
 box.set("hello");
 String value = (String) box.get();
@@ -1303,11 +1300,25 @@ String value = (String) box.get();
 
 总之，泛型带来了：
 
-1. 类型安全：编译器检查类型匹配
+1. 类型安全：编译期间检查类型匹配
 2. 消除强转：取出元素时编译器自动插入类型转换代码，不用手动 cast
 3. 代码复用：一个泛型类可以处理多种类型，不用为每种类型写一份代码
 
-**Java 的泛型是伪泛型**
+**泛型的应用场景**：
+
+1. 统一响应结果封装
+
+   后端接口必须规范返回格式。泛型让你可以用一个类处理所有业务数据的返回。
+
+2. 集合框架
+
+3. 通用工具类
+
+   当你需要写一个工具方法，且逻辑与具体类型无关时。
+
+4. 数据访问层
+
+   这是后端架构中泛型威力最大的地方。通过泛型，你可以定义一套通用的 CRUD 接口，所有实体类直接继承即可，无需重复写代码。
 
 ### 泛型使用
 
@@ -1315,22 +1326,14 @@ String value = (String) box.get();
 
 **泛型类**
 
-定义：
-
 ```java
 class Box<T> {
-
     private T value;
-
     public void set(T value) { this.value = value; }
-
     public T get() { return value; }
 }
-```
 
-使用：
-
-```java
+// 使用：
 Box<String> stringBox = new Box<>();
 stringBox.set("hello");
 
@@ -1416,7 +1419,7 @@ class RepositoryImpl<T> implements Repository<T> {
 
 ### 泛型上下界限定符
 
-用来限制泛型参数的类型范围。
+用来限制泛型参数的类型范围，让你在保证类型安全的同时获得更大的灵活性。
 
 首先看一个示例，`List<Integer>` 为什么不是 `List<Number>` 的子类？
 
@@ -1424,7 +1427,6 @@ class RepositoryImpl<T> implements Repository<T> {
 
 ```java
 List<Integer> integers = new ArrayList<>();
-
 List<Number> numbers = integers; // 编译错误
 ```
 
@@ -1451,27 +1453,20 @@ Integer i = integers.get(0); // 运行时直接抛出 ClassCastException！
 也就是说 `3.14` 是 `Double`，也是 `Number`。但原来的 `integers` 实际上是 `List<Integer>`，于是里面出现了一个 `Double`。类型系统就被破坏了。所以为了避免这种隐患，Java 泛型默认是不变（Invariant）。
 
 > 那么你可能会问，为什么数组可以，但泛型却不可以？（历史包袱）
->
-> 例如，`Integer[]` 为什么可以是 `Number[]` 的子类？
->
-> ```java
+>例如，`Integer[]` 为什么可以是 `Number[]` 的子类？
+> 
+>```java
 > Integer[] intArray = new Integer[10];
 > Number[] numArray = intArray; // 这在 Java 中是合法的！
 > ```
->
-> 这是因为 Java 的**数组是协变的（Covariant）**。但这其实是 Java 早期设计的一个**历史遗留缺陷**。如果你接着往 `numArray` 里塞一个 `Double`，同样会在运行时抛出 `ArrayStoreException`。
->
-> Java 的设计者在引入泛型时吸取了数组的教训，决定**不再重蹈覆辙**，因此将泛型设计为“不可变的”，宁可牺牲一点灵活性，也要在编译期就保证绝对的类型安全。
+> 
+>这是因为 Java 的**数组是协变的（Covariant）**。但这其实是 Java 早期设计的一个**历史遗留缺陷**。如果你接着往 `numArray` 里塞一个 `Double`，同样会在运行时抛出 `ArrayStoreException`。
+> 
+>Java 的设计者在引入泛型时吸取了数组的教训，决定**不再重蹈覆辙**，因此将泛型设计为“不可变的”，宁可牺牲一点灵活性，也要在编译期就保证绝对的类型安全。
 
 这也是为什么要引入通配符。就能够解决上述“既能装 Integer，又能装 Number”的容器需求。
 
-`?` 叫通配符，表示某种未知类型。例如：
-
-```java
-List<?> list;
-```
-
-它可以接收：
+`?` 叫通配符，表示某种未知类型。例如，`List<?> list;` 它可以接收：
 
 ```java
 List<String>
@@ -1556,8 +1551,7 @@ dest
 
 ```java
 List<? extends Animal> animals = new ArrayList<Dog>();
-
-List<Animal> animals = new ArrayList<Dog>(); // 编译错误
+List<Animal> animals = new ArrayList<Dog>(); // 编译错误，因为 Java 的泛型是不可变的
 ```
 
 **逆变**正好反过来，父类型可以替换子类型。`List<Animal>` 可以赋值给 `List<? super Dog>`，因为 Animal 是 Dog 的父类，类型方向是相反的。
@@ -1638,11 +1632,10 @@ class Box {
 
 **为什么说 Java 是伪泛型？**
 
-因为：
+Java 的泛型主要存在于编译期，编译成字节码后，大部分具体泛型类型信息会被擦除，这叫 Type Erasure（类型擦除）。例如：
 
 ```java
-List<String>
-List<Integer>
+List<String> 和 List<Integer>
 ```
 
 在 Java 源代码阶段看起来是两种不同类型。但运行时：
@@ -1653,14 +1646,7 @@ List<Integer> b = new ArrayList<>();
 System.out.println(a.getClass() == b.getClass());
 ```
 
-结果：`true`，它们运行时都是：`ArrayList`。JVM 并没有生成：
-
-```java
-ArrayList<String>
-ArrayList<Integer>
-```
-
-两个不同的类。
+结果是 `true`，它们运行时都是 `ArrayList`。JVM 并没有生成 `ArrayList<String>` 和 `ArrayList<Integer>` 两个不同的类。
 
 因此经常说 Java 泛型是通过编译器 + 类型擦除实现的伪泛型。这里的“伪”不是说它没用，而是说泛型参数不是像某些语言那样完整保留成不同的运行时类型实例。
 
@@ -1672,9 +1658,7 @@ ArrayList<Integer>
 
 ```java
 class Parent<T> {
-    public T get() {
-        return null;
-    }
+    public T get() { return null; }
 }
 ```
 
@@ -1683,9 +1667,7 @@ class Parent<T> {
 ```java
 class Child extends Parent<String> {
     @Override
-    public String get() {
-        return "hello";
-    }
+    public String get() { return "hello"; }
 }
 ```
 
@@ -1693,29 +1675,21 @@ class Child extends Parent<String> {
 
 ```java
 class Parent {
-    public Object get() {
-        return null;
-    }
+    public Object get() { return null; }
 }
 ```
 
-而子类：
+而子类：`public String get()` 看起来方法签名已经不一样了。为了维持多态，编译器会生成一个桥接方法，大致：
 
 ```java
-public String get()
-```
-
-看起来方法签名已经不一样了。为了维持多态，编译器会生成一个桥接方法，大致：
-
-```java
-public Object get() {
-    return get();
-}
+public Object get() { return get(); }
 ```
 
 真正调用 String 版本。这个方法叫：Bridge Method，桥接方法。它是 Java 泛型类型擦除和多态能够兼容的重要机制。
 
 **类型擦除后为什么反射还能拿到泛型类型？？？**
+
+
 
 ## 异常
 
@@ -2077,13 +2051,7 @@ String className = "com.demo.UserService";
 程序运行到这里后，再根据字符串找到 `UserService` 类，然后：
 
 ```
-获取 Class 对象
-↓
-创建 UserService 对象
-↓
-找到 save 方法
-↓
-调用 save()
+获取 Class 对象 -> 创建 UserService 对象 -> 找到 save 方法 -> 调用 save()
 ```
 
 这就是反射最核心的能力。
@@ -2116,11 +2084,7 @@ Spring、MyBatis、JUnit 等框架大量使用反射，本质上都与这个特�
 
 ### Class 对象
 
-Class 对象是反射的核心，理解反射，首先必须理解：
-
-```java
-java.lang.Class
-```
+Class 对象是反射的核心，理解反射，首先必须理解 `java.lang.Class`。
 
 JVM 加载一个类以后，会在运行时维护这个类的类型信息，并且可以通过一个 `Class` 对象访问这些信息。例如：
 
@@ -2139,7 +2103,6 @@ class User {
 User.class
    ↓
 Class<User> 对象
-   │
    ├── 类名
    ├── 父类
    ├── 接口
@@ -2440,6 +2403,8 @@ Spring
 
 **MyBatis 中反射的使用**
 
+MyBatis 把 SQL 查询结果映射到实体类，也是靠反射往字段中赋值。
+
 比如：
 
 ```java
@@ -2471,7 +2436,7 @@ class User {
 **优点**：
 
 - 灵活性高。可以在运行时决定加载哪个类，调用哪个方法，创建哪个对象；
-- 降低耦合。框架不用写死，框架只需要如何加载，如何实例化，如何调用的机制。而具体使用哪个类由用户决定。
+- 降低耦合。框架不用写死，框架只需要确定如何加载，如何实例化，如何调用的机制。而具体使用哪个类由用户决定。
 
 **缺点**：
 

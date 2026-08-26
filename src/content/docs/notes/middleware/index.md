@@ -7,5 +7,4 @@ description: 中间件常见面试问题。
 
 ## 当前内容
 
-- [kafka-八股文](/notes/middleware/kafka-八股文/)
-- [rabbitmq-八股文](/notes/middleware/rabbitmq-八股文/)
+- [消息队列-八股文](/notes/middleware/消息队列/)
