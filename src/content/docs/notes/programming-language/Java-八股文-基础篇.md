@@ -2464,7 +2464,7 @@ Java 中的注解原理
 
 \- 元注解   - 注解 + 反射   - Spring 为什么大量使用注解
 
-
+`@SpringBootTest` 注解支持从父类继承，Spring TestContext 也会向上查找测试配置。因此，父类添加`@SpringBootTest` 注解后，子类及无需再次添加该注解。
 
 ## 序列化
 

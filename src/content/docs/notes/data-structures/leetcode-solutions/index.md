@@ -30,7 +30,7 @@ DP：爬楼梯、打家劫舍、最大子数组、最长递增子序列
 岛屿数量、课程表、快速排序、第 K 大元素、TopK、LRU、DCL 单例、生产者消费者
 
 ```
-LRU 缓存机制 1
+LRU 缓存机制 2
 反转链表 2
 将两个无需有重列表合并成一个有序无重列表
 两个无序列表，找到其中的重复数
@@ -1284,7 +1284,50 @@ public int lengthOfLongestSubstring(String s) {
 
 ## 链表
 
+### 旋转链表
 
+[61. 旋转链表 - 力扣（LeetCode）](https://leetcode.cn/problems/rotate-list/description/)
+
+对于链表 head，以及需要向右旋转的位置数量 k。
+
+```java
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     int val;
+ *     ListNode next;
+ *     ListNode() {}
+ *     ListNode(int val) { this.val = val; }
+ *     ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+ * }
+ */
+class Solution {
+    public ListNode rotateRight(ListNode head, int k) {
+        int list_size = 0;
+        ListNode cur = head;
+        while(cur != null) {
+            list_size++;
+            cur = cur.next;
+        }
+        k = k % list_size;
+        ListNode pre = head;
+        ListNode tail = head;
+        while(k > 0) {
+            tail = tail.next;
+            k--;
+        }
+        while(tail != null) {
+            if (tail.next == null) {break;}
+            tail = tail.next;
+            pre = pre.next;
+        }
+        tail.next = head;
+        head = pre.next;
+        pre.next = null;
+        return head;
+    }
+}
+```
 
 ## 二叉树
 
