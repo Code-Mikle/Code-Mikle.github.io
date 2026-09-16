@@ -1011,7 +1011,7 @@ COMMIT; # 提交事务
 
 1. 原子性（Atomicity）：一个事务是一个不可分割的最小执行单位，事务中的操作要么全部成功，要么全部失败回滚。InnoDB 主要通过 `Undo Log` 保证原子性。事务失败时，可以利用 Undo Log 撤销已执行的修改。
 2. 一致性（Consistency）：事务执行前后，数据必须保证合法状态（如转账前后总金额不变）。
-3. 隔离性（Isolation）：多个并发事务之间相互隔离，互不干扰。例如两个事务同时修改同一个账户余额，数据库需要避免脏读、不可重复读等问题。InnoDB 主要通过 锁、MVCC、Undo Log、Read View 机制实现隔离性。
+3. 隔离性（Isolation）：多个并发事务之间相互隔离，互不干扰。例如两个事务同时修改同一个账户余额，数据库需要避免脏读、不可重复读等问题。InnoDB 主要通过锁、MVCC、Undo Log、Read View 机制实现隔离性。
 4. 持久性（Durability）：事务一旦提交，对数据库的修改就是永久的。即使数据库随后宕机，已经提交的数据也不应丢失，能够恢复。InnoDB 主要通过 `Redo Log` 保证持久性。提交事务时，不一定立即把所有数据页写入磁盘，但会先保证相关 Redo Log 持久化。数据库重启后可以通过 Redo Log 恢复已提交的数据。
 
 ### 事务的隔离级别
@@ -1126,32 +1126,31 @@ SQL 标准定义了四种隔离级别，隔离程度从低到高如下，并发�
    UPDATE account SET balance = 900 WHERE id = 1;
    ```
    
-
-事务 A 尚未提交。此时事务 B：
-
-```sql
+   事务 A 尚未提交。此时事务 B：
+   
+   ```sql
    START TRANSACTION;
    SELECT balance FROM account WHERE id = 1;
-```
-
+   ```
+   
    事务 B 通常不会等待事务 A，而是通过 Undo Log 找到事务 A 修改前的版本：
-
-   ```sql
-balance = 1000
-   ```
-
+   
+      ```sql
+   balance = 1000
+      ```
+   
    其过程可以理解为：
-
-   ```
-当前记录 balance = 900
-           ↓ 该版本对事务 B 不可见
-   根据 DB_ROLL_PTR 找 Undo Log
-           ↓
-   构造旧版本 balance = 1000
-           ↓
-   返回 1000
-   ```
-
+   
+      ```
+   当前记录 balance = 900
+              ↓ 该版本对事务 B 不可见
+      根据 DB_ROLL_PTR 找 Undo Log
+              ↓
+      构造旧版本 balance = 1000
+              ↓
+      返回 1000
+      ```
+   
    因此快照读的核心不是“读取内存快照的副本”，而是：按照 Read View 的可见性规则，从当前版本和 Undo Log 版本链中找到一个可见版本。
 
 2. 当前读（Current Read），官方文档称为锁定读：读取可以被加锁的最新数据版本，并对扫描到的索引记录或范围加锁。
@@ -1485,6 +1484,8 @@ UPDATE account SET balance = balance - 100 WHERE id = 1;
 
 如果没有并发控制，两个事务可能都先读到 1000，然后都写入 900，最终只扣了 100，而不是 200。锁的作用就是保证多个事务修改同一数据时，按照受控顺序执行。
 
+> 注意，上述示例中，如果事务中只有单条 UPDATE sql 语句，那么确实不需要并发控制，因为已经是排他锁了。但是如果事务中是先读后写有别的 sql 语句，那么可能依旧得并发控制。UPDATE 只保证这一条 sql 是并发安全的。
+
 ### 按锁粒度划分
 
 1. 表级锁：表级锁锁住整张表。
@@ -1600,23 +1601,23 @@ UPDATE account SET balance = balance - 100 WHERE id = 1;
    (10, 20)
    (20, 30)
    (30, +∞)
-```
+   ```
    
-如果事务锁住 `(10, 20)` 这个间隙，其他事务就不能在这个范围内插入新记录。例如：
+   如果事务锁住 `(10, 20)` 这个间隙，其他事务就不能在这个范围内插入新记录。例如：
    
    ```sql
    SELECT * FROM user WHERE id > 10 AND id < 20 FOR UPDATE;
-```
-
+   ```
+   
    在特定隔离级别和执行计划下，可能锁住 `10` 和 `20` 之间的间隙。
-
-   > 注意：间隙锁不止 SELECT 语句，还有 UPDATE、DELETE 在范围扫描时都可能产生。
-
+   
+      > 注意：间隙锁不止 SELECT 语句，还有 UPDATE、DELETE 在范围扫描时都可能产生。
+   
    间隙锁的核心作用是：防止其他事务在查询范围内插入新记录，从而避免当前读发生幻读。
-
+   
    需要注意，间隙锁本身主要限制插入，不一定阻止其他事务更新已经存在的其他记录。
-
-   > 对于这句话的理解是：以 10 和 20 为例，间隙锁主要阻止在 (10, 20) 之间插入数据，但是并不阻止其他事务对 10 和 20 这两个已经存在的记录进行修改。
+   
+      > 对于这句话的理解是：以 10 和 20 为例，间隙锁主要阻止在 (10, 20) 之间插入数据，但是并不阻止其他事务对 10 和 20 这两个已经存在的记录进行修改。
 
 3. 临键锁，Next-Key Lock，是：`记录锁 + 间隙锁`。
 
@@ -1641,12 +1642,7 @@ UPDATE account SET balance = balance - 100 WHERE id = 1;
 
 ### 按特殊用途划分
 
-1. 意向锁（Intention Locks），一种表级锁，用于表示：某个事务准备或已经对表中的某些行加锁。主要有：
-
-   ```
-   意向共享锁 IS（Intention Shared Lock）
-   意向排他锁 IX（Intention Exclusive Lock）
-   ```
+1. 意向锁（Intention Locks），一种表级锁，用于表示：某个事务准备或已经对表中的某些行加锁。主要有：意向共享锁 IS（Intention Shared Lock）和意向排他锁 IX（Intention Exclusive Lock）。
 
    例如事务要对某一行加共享锁，会先对表加 `IS` 锁。要对某一行加排他锁，会先对表加 `IX` 锁。
 
@@ -1672,12 +1668,7 @@ UPDATE account SET balance = balance - 100 WHERE id = 1;
 
 2. 插入意向锁（Insert Intention Lock），一种特殊的间隙锁，表示事务准备在某个索引间隙中插入记录。
 
-   例如索引中存在：
-
-   ```
-   10
-   20
-   ```
+   例如索引中存在 10 和 20。
 
    事务 A 插入：
 
@@ -1693,9 +1684,7 @@ UPDATE account SET balance = balance - 100 WHERE id = 1;
 
    虽然它们都在 `(10, 20)` 的间隙中，但插入位置不同，通常可以并发执行。
 
-   插入意向锁的作用就是让不同位置的插入尽量并发，而不是简单锁住整个间隙。
-
-   但如果该间隙已经被其他事务的 Gap Lock 或 Next-Key Lock 锁住，插入仍然需要等待。
+   插入意向锁的作用就是让不同位置的插入尽量并发，而不是简单锁住整个间隙。但如果该间隙已经被其他事务的 Gap Lock 或 Next-Key Lock 锁住，插入仍然需要等待。
 
 3. AUTO-INC 锁
 
@@ -1725,7 +1714,7 @@ UPDATE account SET balance = balance - 100 WHERE id = 1;
    - 元数据读锁（MDL_SHARED）：当一个事务需要读取表的元数据时（如执行 SELECT 操作），会获取读锁。多个事务可以同时持有读锁，不会相互阻塞；
    - 元数据写锁（MDL_EXCLUSIVE）：当一个事务需要修改表的元数据时（如执行 ALTER TABLE 操作），会获取写锁。写锁会阻塞其他任何读锁和写锁，确保独占访问。
 
-   元数据锁的主要作用：防止并发的 DDL 操作和 DML 操作冲突。例如执行：
+   元数据锁的主要作用：防止并发的 DDL（Data Definition Language，数据定义语言，即修改表结构） 操作和 DML（Data Manipulation Language，数据操纵语言，即修改表数据） 操作冲突。例如执行：
 
    ```sql
    SELECT * FROM user;
@@ -1741,7 +1730,6 @@ UPDATE account SET balance = balance - 100 WHERE id = 1;
 
    ```sql
    START TRANSACTION;
-   
    SELECT * FROM user;
    ```
 
@@ -1806,16 +1794,14 @@ UPDATE account SET balance = balance - 100 WHERE id = 1;
      AND version = 5;
    ```
 
-   如果受影响行数为 1，说明更新成功。
-
-   如果受影响行数为 0，说明版本已经变化，其他事务可能已经修改过数据。
+   如果受影响行数为 1，说明更新成功。如果受影响行数为 0，说明版本已经变化，其他事务可能已经修改过数据。
 
    乐观锁适合：
 
    - 读多写少
    - 冲突概率较低
    - 允许失败后重试
-
+   
    适用场景：读多写少，数据冲突较低的场景。
 
 ### 死锁
@@ -1833,7 +1819,7 @@ UPDATE account SET balance = balance - 100 WHERE id = 1;
 
 ```sql
 START TRANSACTION;
-h
+
 UPDATE account
 SET balance = balance - 100
 WHERE id = 1;
