@@ -1,5 +1,5 @@
 ---
-title: Java 八股文
+title: Java 基础篇
 ---
 
 ## 为什么使用 Java，优势是啥？
@@ -2142,6 +2142,9 @@ Class<?> clazz = Class.forName("com.demo.User");
 4. 获取并调用方法
 5. 获取构造方法
 6. 获取注解
+7. 获取接口信息
+8. 获取父类信息
+...
 ```
 
 对应的核心 API：
@@ -2265,7 +2268,7 @@ Annotation
 
    ```java
    Field field = User.class.getDeclaredField("name");
-   field.setAccessible(true); // 表示关闭 Java 语言层面的访问检查
+   field.setAccessible(true); // 表示关闭 Java 语言层面的访问检查，如果不设置为 true，就无法通过反射修改 private 字段的值
    field.set(user, "Tom");
    ```
 
@@ -2532,7 +2535,7 @@ public void save() {
 
 但这样就把业务逻辑和日志逻辑耦合在一起了。更好的方案是加一个代理：调用者发起请求，请求先到代理对象，代理对象执行前置日志操作，然后调用真实对象的方法，真实对象返回结果后，代理对象再执行后置日志操作，最后把结果返回给调用方。
 
-代理对象负责额外逻辑，真正业务还是交给 `UserServiceImpl`。这就是代理模式。
+代理对象负责额外逻辑，真正业务还是交给 `UserServiceImpl`，这就是代理模式。
 
 Java 中代理主要有两种：**静态代理**和**动态代理**。
 
@@ -2684,6 +2687,8 @@ UserService proxy = (UserService) Proxy.newProxyInstance(
 InvocationHandler.invoke()
 ```
 
+> 上述调用的是 `proxy.save()`，为啥实际进入的就是 `invoke()`？这个机制很复杂，后续了解
+
 然后 `invoke()` 再通过反射执行真正的：
 
 ```
@@ -2726,7 +2731,7 @@ InvocationHandler → 方法被调用以后交给谁处理
 
 CGLIB 基于 ASM 字节码生成工具，通过继承目标类生成子类来实现代理，所以不需要接口，但 final 类和 final 方法没法代理。
 
-下述是一个完整示例（该实例仅用于理解流程，因为从 Java 9 开始有模块系统，JDK 21 默认不允许普通第三方库反射打开 `java.lang.ClassLoader#defineClass`），假设目标类没有实现任何接口：
+下述是一个完整示例（该实例仅用于理解流程，因为从 Java 9 开始有模块系统，JDK 21 默认不允许普通第三方库反射打开 `java.lang.ClassLoader#defineClass`，因此下述示例在 Java 8 上通常可以直接运行，但是在 Java 21 上不可以运行），假设目标类没有实现任何接口：
 
 ```java
 public class UserService {
@@ -2840,15 +2845,17 @@ UserService.save()
 | `Proxy` + `InvocationHandler` | 字节码增强             |
 | 不能代理接口之外的方法        | 可以代理普通可重写方法 |
 
+在现代 Spring 开发中两种方式仍然存在。Spring Boot 默认采用基于类的 CGLIB 代理，也可以配置为 JDK 动态代理。
 
+企业开发中很少直接手写动态代理，更多是通过 Spring、MyBatis、Feign 等框架间接使用。典型场景包括事务、日志、权限、缓存、监控、重试、RPC 调用以及 MyBatis Mapper 等。JDK 动态代理适合基于接口的代理，例如 MyBatis Mapper 和 RPC Client；CGLIB 更适合没有接口的具体类代理。只有在开发框架、SDK、RPC、ORM 或通用基础组件时，才比较可能直接编写 `Proxy`、`InvocationHandler` 或字节码代理相关代码。
 
-## Java 中 final、finally 和 finalize 的区别？
+## **Java 中 final、finally 和 finalize 的区别？**
 
+1. `final` 是修饰符，用来“锁死”类、方法或变量。类被 final 修饰就不能被继承，方法被 final 修饰就不能被重写，变量被 final 修饰就不能重新赋值；
+2. `finally` 是异常处理的一部分，和 try-catch 配合使用。不管 try 块里有没有抛异常，finally 块都会执行，通常用来释放资源、关闭连接这类收尾工作；
+3. `finalize` 是 Object 类里的一个放法，JVM 在回收对象之前会调用它，让对象有机会做最后的清理。但目前已经被废弃，JDK 9 开始标记为 `@Deprecated`，JDK 18 直接标记为 forRemoval，所以不要使用。
 
-
-
-
-## BIO、NIO、AIO
+## **BIO、NIO、AIO**
 
 BIO、NIO、AIO 是 Java 里三种不同的 I/O 模型，核心区别在于线程在等待数据时的行为。
 
@@ -2866,9 +2873,9 @@ BIO、NIO、AIO 是 Java 里三种不同的 I/O 模型，核心区别在于线�
 
 3. AIO
 
-   异步非阻塞模型，发起读请求后直接返回，操作系统把数据拷贝完了再通过回调通知你。但 Linux 下 AIO 支持一般，实际生产环境用得不多。极少使用。
+   异步非阻塞模型，发起读请求后直接返回，操作系统把数据拷贝完了再通过回调通知你。但 Linux 下 AIO 支持一般，实际生产环境用得不多，极少使用。
 
-### Channel
+### **Channel**
 
 传统 I/O 是单向的，InputStream 只能读、OutputStream 只能写。要实现双向通信，必须要同时持有两个流对象。
 
@@ -2892,15 +2899,15 @@ Channel 是 Java NIO 里的核心组件，支持双向传输，即一个通道�
 
    UDP 通道，不需要建立连接，直接发数据。
 
-### Selector
+### **Selector**
 
 Selector 是 Java NIO 里实现 I/O 多路复用的核心组件，一个线程通过 Selector 就能同时监听成百上千个 Channel 的读写事件，不用给每个连接开一个线程。
 
 
 
-## 建议
+## **建议**
 
-> 我建议这四部分不要平均投入精力，可以大致按照：
+> **我建议这四部分不要平均投入精力，可以大致按照：**
 >
 > ```
 > Java 基础       15%
@@ -2909,7 +2916,7 @@ Selector 是 Java NIO 里实现 I/O 多路复用的核心组件，一个线程�
 > JVM             30%
 > ```
 >
-> 对于 Java 后端面试，真正拉开差距的一般是：
+> **对于 Java 后端面试，真正拉开差距的一般是：**
 >
 > ```
 > HashMap
@@ -2931,7 +2938,7 @@ Selector 是 Java NIO 里实现 I/O 多路复用的核心组件，一个线程�
 > JVM 排障
 > ```
 >
-> 复习方式上，我建议我们后面继续采用一种固定模式。每个主题按照五层来讲：
+> **复习方式上，我建议我们后面继续采用一种固定模式。每个主题按照五层来讲：**
 >
 > ```
 > ① 它是什么
@@ -2945,7 +2952,7 @@ Selector 是 Java NIO 里实现 I/O 多路复用的核心组件，一个线程�
 > ⑤ 面试会怎么继续追问
 > ```
 >
-> 例如复习 `volatile`：
+> **例如复习 `volatile`：**
 >
 > ```
 > volatile 是什么？
@@ -2963,6 +2970,6 @@ Selector 是 Java NIO 里实现 I/O 多路复用的核心组件，一个线程�
 > 单例模式为什么需要 volatile？
 > ```
 >
-> 这样最后形成的不是一堆孤立知识点，而是一张能够连续回答追问的知识网络。
+> **这样最后形成的不是一堆孤立知识点，而是一张能够连续回答追问的知识网络。**
 >
-> 如果按这个路线开始，我建议第一站直接从 **Java 基础中的「==、equals、hashCode」** 开始，然后自然衔接到 `HashMap`，整体会比较顺。
+> **如果按这个路线开始，我建议第一站直接从 Java 基础中的「==、equals、hashCode」 开始，然后自然衔接到 `HashMap`，整体会比较顺。**
