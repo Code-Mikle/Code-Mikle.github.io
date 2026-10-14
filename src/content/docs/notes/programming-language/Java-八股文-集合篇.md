@@ -35,94 +35,6 @@ Map
 └── ConcurrentHashMap
 ```
 
-**为什么需要集合？**
-
-如果只使用数组：
-
-```java
-User[] users = new User[10];
-```
-
-会有几个问题：长度固定，插入删除不方便，缺少丰富的数据操作能力，无法直接表达 Set、Queue、Map 等数据结构。
-
-而集合：
-
-```java
-List<User> users = new ArrayList<>();
-```
-
-可以动态扩容，并且提供：
-
-```
-add()
-remove()
-contains()
-size()
-iterator()
-```
-
-等大量通用操作。所以集合框架本质上解决的是如何用统一、标准化的数据结构管理一批对象。
-
-
-
-
-
-
-
->其中真正需要深入掌握的，其实没有那么多。
->
->第一梯队：
->
->```
->ArrayList
->HashMap
->ConcurrentHashMap
->```
->
->第二梯队：
->
->```
->LinkedList
->HashSet
->TreeMap
->CopyOnWriteArrayList
->```
->
->尤其是 HashMap，建议完整掌握：
->
->```
->HashMap
->│
->├── 数据结构
->│   数组 + 链表 + 红黑树
->│
->├── put()
->│
->├── get()
->│
->├── hash()
->│
->├── 扩容
->│
->├── 链表树化
->│
->├── 为什么容量是 2^n
->│
->├── 为什么负载因子默认 0.75
->│
->├── 为什么线程不安全
->│
->└── JDK 7 与 JDK 8 的区别
->```
->
->最好做到能口述：
->
->> 一个 `put(k, v)` 从调用开始，到数据最终放进 HashMap 的全过程。
->
->这个能力比记零散结论重要很多。
-
-
-
 ![image-20260806162100608](./assets/image-20260806162100608.png)
 
 ## Collection
@@ -131,34 +43,6 @@ iterator()
 
 ### List
 
-对比 ArrayList 和 LinkedList 的底层差异，以及在不同业务场景下（如高频读写、并发访问）该如何选型。
-
-ArrayList 的扩容机制
-
-`List` 的特点：有序、可重复、可以通过下标访问。
-
-> 这里的“有序”是指：元素按照插入顺序或指定顺序保存。
-
-例如：
-
-```java
-List<String> list = new ArrayList<>();
-
-list.add("A");
-list.add("B");
-list.add("A");
-```
-
-结果 `[A, B, A]`，允许重复。并且：
-
-```java
-list.get(0);
-```
-
-可以通过索引访问。
-
-常见实现：
-
 ```
 List
 ├── ArrayList
@@ -166,11 +50,7 @@ List
 └── Vector
 ```
 
-其中最重要的是 `ArrayList`。
-
 #### ArrayList
-
-> ArrayList 是 List 的常用实现，底层使用 Object 数组保存元素，因此支持 O(1) 的随机下标访问。它内部维护 elementData 数组和 size，使用无参构造时现代 JDK 通常先使用空数组，第一次添加元素时再初始化默认容量。容量不足时会创建一个更大的数组，通常扩容到原容量的大约 1.5 倍，然后把原数组元素复制到新数组中，因此尾部 add 的均摊复杂度是 O(1)，但中间插入和删除因为需要移动元素，一般是 O(n)。ArrayList 允许重复和 null，但本身不是线程安全的。另外它的迭代器采用 fail-fast 机制，通过 modCount 检测遍历期间的结构性修改。
 
 `ArrayList` 底层基于动态数组实现，支持按下标快速随机访问，并在容量不足时自动扩容。
 
@@ -178,32 +58,13 @@ List
 
 > 对于读多写少的并发场景，可以考虑使用 CopyOnWriteArrayList。
 
-例如：
-
-```java
-List<Integer> list = new ArrayList<>();
-
-list.add("A");
-list.add("B");
-list.add("C");
-```
-
-表面上看容量可以不断增长，但底层实际上仍然是数组，只是 `ArrayList` 帮我们完成了扩容。
-
 ##### 数据结构
 
 ArrayList 内部核心字段可以简化理解成：
 
 ```java
-transient Object[] elementData;
-private int size;
-```
-
-其中：
-
-```
-elementData → 真正存储元素的数组
-size → 当前实际存放了多少个元素
+transient Object[] elementData; // 真正存储元素的数组
+private int size; // 当前实际存放了多少个元素
 ```
 
 例如：
@@ -212,8 +73,7 @@ size → 当前实际存放了多少个元素
 ArrayList<String> list = new ArrayList<>();
 
 list.add("A");
-list.add("B");
-list.add("C");
+...
 ```
 
 这里必须区分两个概念：
@@ -223,51 +83,24 @@ size → 实际元素数量
 capacity → 底层数组容量
 ```
 
-比如：
-
-```
-size = 3
-capacity = 10
-```
-
-完全正常。
-
-所以 `list.size()` 返回的是实际元素数量，不是数组容量。
-
 ##### `add()`
-
-```java
-list.add("A");
-```
 
 大致过程：
 
 ```
-add(element)
+add(element)，检查底层数组容量够不够
 ↓
-检查底层数组容量够不够
-↓
-够 → elementData[size] = element
-
-不够
-→ 扩容
-→ 再插入
+够，则 elementData[size] = element
+不够，先扩容，再插入
 ↓
 size++
 ```
 
-尾部插入通常非常快。如果不触发扩容：
-
-```
-add(element)
-→ 均摊 O(1)
-```
-
-之所以说“均摊”，是因为偶尔扩容需要复制整个数组。
+尾部插入通常非常快。
 
 ##### `remove()`
 
-ArrayList 有两个很容易混淆的方法，按对象删除和按下标删除：
+有两个很容易混淆的方法，按对象删除和按下标删除：
 
 ```java
 remove(Object o)
@@ -297,13 +130,7 @@ indexOf
 lastIndexOf
 ```
 
-通常都是 O(n)。例如：
-
-```java
-list.indexOf("Tom");
-```
-
-内部本质是遍历。所以 ArrayList 的“查询快”特指按下标随机访问快，不代表按内容搜索也快。
+通常都是 O(n)。
 
 ##### 扩容机制
 
@@ -313,15 +140,16 @@ list.indexOf("Tom");
 ArrayList<String> list = new ArrayList<>(100);
 ```
 
-如果能够预估集合规模，指定合适的初始容量可以提高性能。
-
-当数组容量不足时，通常扩容为原容量的 1.5 倍。核心计算逻辑长期以来类似：
+当数组容量不足时，通常扩容为原容量的 1.5 倍。核心计算逻辑类似：
 
 ```
 newCapacity = oldCapacity + (oldCapacity >> 1);
 ```
 
 注意因为整数右移，所以不一定严格等于数学上的 `×1.5`，可以理解成约扩容到原容量的 1.5 倍。
+
+> 之所以是 1.5 倍，而不是 2 倍？
+> 选择 1.5 倍是时间和空间的折中。2 倍扩容次数少太浪费内存，1.5 倍既能减少扩容次数，又不会让内存利用率太低
 
 扩容的流程：
 
@@ -334,29 +162,36 @@ newCapacity = oldCapacity + (oldCapacity >> 1);
 
 #### LinkedList
 
-底层是双向链表，增删快查询慢，额外指针内存开销大。
+底层是双向链表，增删快查询慢，额外指针内存开销大。每个节点保存：`prev` 指向前一个节点、`item` 存储当前节点的数据和 `next` 指向后一个节点。
 
-每个节点保存：
+它实现了 `List`、`Deque` 接口，因此既可以作为列表使用，也可以作为队列、双端队列、栈使用。
 
+**常用方法**
+
+```java
+LinkedList<String> list = new LinkedList<>();
+
+// 添加元素
+list.add("A");
+list.add("B");
+list.addFirst("Head");
+list.addLast("Tail");
+
+// 获取元素
+list.get(1);
+list.getFirst();
+list.getLast();
+
+// 删除元素
+list.remove(1);
+list.removeFirst();
+list.removeLast();
+
+// 队列操作
+list.offer("C"); // 向队尾添加元素
+list.poll(); // 获取并删除队头元素
+list.peek(); // 获取队头元素，但不删除
 ```
-prev
-item
-next
-```
-
-所以它没有数组那种连续存储空间。
-
-注意：
-
-“LinkedList 插入、删除一定比 ArrayList 快”是不准确的。如果你首先要通过下标：
-
-```
-list.remove(10000);
-```
-
-LinkedList 还要先花 `O(n)` 找到这个节点。所以整体不一定比 ArrayList 快。
-
-实际开发中：大多数 List 场景优先使用 ArrayList，LinkedList 的使用频率明显更低。
 
 #### Vector
 
@@ -685,35 +520,6 @@ Stack<Integer>
 
 Map 存储的是 Key-Value 键值对。
 
-例如：
-
-```java
-Map<Long, User> map = new HashMap<>();
-
-map.put(1L, user1);
-map.put(2L, user2);
-```
-
-结构：
-
-```
-1 → user1
-2 → user2
-```
-
-Map 最核心的特点：Key 不能重复。
-
-如果：
-
-```
-map.put(1L, user1);
-map.put(1L, user2);
-```
-
-后面的 value 会覆盖前面的 value。
-
-常见实现：
-
 ```
 Map
 ├── HashMap
@@ -725,39 +531,17 @@ Map
 
 ### HashMap
 
-> JDK 8 之后 HashMap 底层采用数组、链表和红黑树实现。put 时首先对 Key 的 hashCode 做扰动得到 hash，然后通过 `(n - 1) & hash` 定位数组桶。如果桶为空就直接插入；如果桶中已有节点，则通过 hash 和 equals 判断 Key 是否相同，相同则覆盖 value，否则插入链表或红黑树。当单个桶中的链表达到树化条件且数组容量至少为 64 时，会转换为红黑树。HashMap 默认负载因子是 0.75，当 size 超过 threshold 时容量通常扩为原来的两倍。由于容量始终保持为 2 的幂，扩容后的节点只需要判断是留在原位置还是移动到 `原位置 + oldCapacity`。HashMap 本身不是线程安全的，并发场景一般使用 ConcurrentHashMap。
+核心目标是根据 key 的哈希值，尽可能在 O(1) 时间内完成 put、get、remove。
 
-HashMap 是 Java 集合中最重要的数据结构之一，核心目标是根据 Key 的哈希值，尽可能在 O(1) 时间内完成 put、get、remove。
+key 可以为 null，存的时候会把 null key 的 hash 值当作 0，固定放在数组下标 0 的位置。
 
-HashMap 不是线程安全的，因为 HashMap 本身并没有提供完整的并发同步机制，如果多个线程同时：
-
-```
-put
-resize
-修改链表 / 树
-```
-
-可能出现：数据覆盖、数据丢失、结构不一致、可见性问题等。并发场景通常使用 ConcurrentHashMap。
+HashMap 不是线程安全的，因为它本身并没有提供完整的并发同步机制，如果多个线程同时执行 `put`、`resize` 等操作，就可能出现数据覆盖、数据丢失、结构不一致、可见性问题等。并发场景通常使用 ConcurrentHashMap。
 
 JDK 8 以后它的主要结构为：`数组 + 链表 + 红黑树`，链表和红黑树就是来辅助解决 hash 冲突的。
 
-整体结构可以理解为：
+整体结构如下图所示：
 
-```
-Node[]
-│
-├── bucket 0
-│
-├── bucket 1 → Node → Node
-│
-├── bucket 2
-│
-└── bucket 3
-            ↓
-          红黑树
-```
-
-其中数组中的每个位置叫一个 bucket（桶）。
+![image-20260806164640785](./assets/image-20260806164640785.png)
 
 #### 核心数据结构
 
@@ -765,11 +549,8 @@ HashMap 内部主要维护一个：
 
 ```java
 Node<K,V>[] table;
-```
 
-Node 可以简化理解成：
-
-```java
+// Node 可以简化理解成
 static class Node<K,V> {
     final int hash;
     final K key;
@@ -778,18 +559,7 @@ static class Node<K,V> {
 }
 ```
 
-每个 Node 保存：
-
-```
-hash
-key
-value
-next
-```
-
-所以如果多个 Key 落到同一个数组位置，就通过 `next` 形成链表。JDK 8 以后，当链表达到一定条件时会转成红黑树。
-
-![image-20260806164640785](./assets/image-20260806164640785.png)
+每个 Node 保存：hash、key、value、next。
 
 #### 方法
 
@@ -802,8 +572,6 @@ map.put("Tom", 18);
 核心流程可以记成：
 
 ```
-Key
-↓
 计算 Key 的 hash 值
 ↓
 根据 hash 值用 (table.length-1) & hash 算出应该存放的数组下标
@@ -838,23 +606,13 @@ size++
 例如，`map.get("Tom");`，流程：
 
 ```
-根据 key 计算 hash
+先根据 key 计算 hash，然后根据 hash 计算数组下标 table[index]
 ↓
-根据 hash 计算数组下标
+检查第一个节点，以及 hash + equals
 ↓
-table[index]
+如果不是，则链表遍历 / 红黑树查询
 ↓
-检查第一个节点
-↓
-hash + equals
-↓
-如果不是
-↓
-链表遍历 / 红黑树查询
-↓
-找到返回 value
-↓
-找不到返回 null
+找到返回 value；找不到返回 null
 ```
 
 所以平均情况下时间复杂度是 O(1)。但如果哈希冲突严重，全部变成链表，时间复杂度就是 O(n)。将链表转换为红黑树之后可以改善到 O(log n)。
@@ -869,24 +627,13 @@ if (node.hash == hash && (node.key == key || key.equals(node.key))) {
 }
 ```
 
-大致经过：
-
-```
-1. hash 是否相同
-2. 引用是否相同
-3. equals 是否相同
-```
+大致经过：1）hash 是否相同；2）引用是否相同；3）equals 是否相同
 
 所以 HashMap 查找一个 Key 的过程是：
 
 ```
-hashCode()
-↓
-找到桶
-↓
-equals()
-↓
-确定具体 Key
+1. 计算 hashCode() 找到对应的桶
+2. 用 equals() 确定具体 Key
 ```
 
 这就解释了为什么使用自定义对象作为 HashMap Key 时，重写 equals() 通常必须同时重写 hashCode()。
@@ -947,30 +694,13 @@ capacity - 1 = 15
 ```
 map.put(key1, value1);
 map.put(key2, value2);
-```
 
-如果：
-
-```
+// 计算 hash
 index(key1) = 5
 index(key2) = 5
 ```
 
-就产生哈希冲突。JDK 8 中通过：`链表 + 红黑树` 解决。例如：
-
-```
-table[5]
-   ↓
-Node(key1)
-   ↓
-Node(key2)
-   ↓
-Node(key3)
-```
-
-这种方式称为链地址法。
-
-同时，如果同一个下标下的链表超过 8 个节点且数组长度大于等于 64，这个时候长链表就会导致性能下降，因此就将链表转成红黑树（即，树化），查找速度从 O(n) 变成了 O(logn)。
+就产生哈希冲突。JDK 8 中通过：`链表 + 红黑树` 解决。即，先用链表给串起来。如果同一个下标下的链表超过 8 个节点且数组长度大于等于 64，这个时候长链表就会导致性能下降，因此就将链表转成红黑树（即，树化），查找速度从 O(n) 变成了 O(logn)。
 
 > 如果链表长度很长，但数组长度还不到 64，那么还是优先扩容。因为数组太小时发生冲突，很可能只是容量不足。扩容可能自然解决问题，没有必要马上引入结构更加复杂的红黑树。
 
@@ -996,21 +726,24 @@ HashMap 里的红黑树还有个特殊处理：节点同时保留了链表的 ne
 
 LinkedHashMap 可以理解成：HashMap + 双向链表维护顺序。
 
-因此它可以保证：插入顺序
+因此它可以保证遍历顺序和插入顺序一致。
 
-或者配置成：访问顺序
+有两种排序模式：插入顺序和访问顺序
+
+- 插入顺序（默认）：谁先 put，谁在前面；
+- 访问顺序：如果把 `accessOrder` 置为 true，每次 get 或 put 已存在的 key 都会把对应节点挪到链表尾部，最近访问的永远在后面。
 
 这也是它可以被用来实现 LRU 缓存的重要原因。
 
 ### TreeMap
 
-TreeMap 和 TreeSet 类似，底层主要基于：红黑树。
+底层是红黑树，天然有序。它会根据 key 的大小自动排序，要么 key 实现 Comparable 接口走自然排序，要么构造时传个 Comparable 自定义排序规则。
 
-它的特点：Key 自动排序，查找 / 插入 / 删除通常 O(log n)
+查找 / 插入 / 删除通常 O(log n)。
 
-例如：
+不允许 null key，因为要比较大小，null 没法比较。
 
-```
+```java
 Map<Integer, String> map = new TreeMap<>();
 
 map.put(5, "A");
@@ -1022,18 +755,14 @@ map.put(3, "C");
 
 ### Hashtable
 
-> Hashtable 是 Java 早期提供的线程安全 Map 实现，底层经典实现主要采用数组加链表解决哈希冲突。它通过对 put、get、remove 等主要操作使用 synchronized 来保证线程安全，因此并发控制粒度比较粗，多线程访问时容易产生较大的锁竞争。Hashtable 不允许 null key 和 null value。相比之下，HashMap 不保证线程安全但性能更好，而 ConcurrentHashMap 通过 CAS、volatile 和更细粒度的同步机制实现更高的并发性能，因此现代并发场景一般优先使用 ConcurrentHashMap，Hashtable 主要存在于一些历史代码中。
-
 Hashtable 是比较早期的线程安全 `Map` 实现，目的就是为了解决多个线程操作同一个 Map 时，要保证数据结构安全。和 HashMap 的一个经典区别：
 
 ```
+// 区别 1：
 Hashtable → 主要方法使用 synchronized 对整个 Hashtable 加锁，因此并发粒度比较粗，线程安全
 HashMap → 线程不安全
-```
 
-另外：
-
-```
+// 区别 2：
 HashMap → 可以有 null key、null value
 Hashtable → 不允许 null key、null value
 ```
@@ -1051,13 +780,8 @@ Hashtable → 不允许 null key、null value
 > 情况二：Tom 存在，但是 Value = null
 > ```
 >
-> Hashtable 直接禁止 null，就让：
+> Hashtable 直接禁止 null，就让 `get(key) == null` 可以明确表示不存在对应映射，这点和 ConcurrentHashMap 不允许 null 的设计有相似之处。
 >
-> ```
-> get(key) == null
-> ```
->
-> 可以明确表示不存在对应映射，这点和 ConcurrentHashMap 不允许 null 的设计有相似之处。
 
 但是现在并发场景通常不会推荐 Hashtable，而使用 ConcurrentHashMap。
 
@@ -1104,17 +828,7 @@ class Entry<K, V> {
 }
 ```
 
-发生 Hash 冲突时，通过链表解决：
-
-```
-table[index]
-     ↓
-Entry A
-     ↓
-Entry B
-     ↓
-Entry C
-```
+发生 Hash 冲突时，通过链表解决。
 
 所以基本思想和早期 HashMap 很接近：
 
@@ -1164,11 +878,15 @@ put(key, value)
 
 ### ConcurrentHashMap
 
-> ConcurrentHashMap 是 Java 中面向并发场景的线程安全 Map。JDK 8 以后它取消了 JDK 7 的 Segment 分段锁，底层改为数组、链表和红黑树结构。执行 put 时，如果目标桶为空，就通过 CAS 插入；如果桶已经存在节点，则主要通过 synchronized 锁住当前桶的首节点，在桶内完成更新，因此锁粒度比锁整个 Map 更细。get 操作主要依赖 volatile 保证可见性，通常不需要加互斥锁。发生严重 hash 冲突时链表可以树化为红黑树；扩容时使用 ForwardingNode 等机制，并允许多个线程协作迁移数据。此外，元素数量采用类似 LongAdder 的分散计数思想减少竞争。ConcurrentHashMap 不允许 null key 和 null value，并提供 putIfAbsent、computeIfAbsent 等原子复合操作。
-
 `ConcurrentHashMap` 可以理解为：为高并发场景设计的线程安全版 HashMap。
 
 它解决的核心问题是：多个线程同时对 Map 做 `put/get/remove` 时，既要保证线程安全，又不能像早期 `Hashtable` 那样把整个 Map 几乎都锁住。
+
+通过三大机制来保证线程安全的：
+
+1. CAS 保证原子性操作
+2. synchronized 发生哈希冲突时局部加锁，即对桶的头节点加锁
+3. volatile 保证内存可见性（因为线程安全不仅需要保证多个线程同时修改数据，还要一个线程的修改能够被其他线程正确观察到）
 
 在面试中一般重点讨论两个版本：
 
@@ -1184,35 +902,27 @@ JDK 8+
 
 > 为什么 ConcurrentHashMap 不允许 null key 和 null value？
 >
-> HashMap：`map.put(null, null);` 可以。
->
-> ConcurrentHashMap：
->
 > ```java
-> map.put(null, value);
+>map.put(null, value);
 > map.put(key, null);
-> ```
->
-> 不允许，会抛 NullPointerException。
->
-> 为什么？
->
-> 核心原因是并发语义容易产生歧义。例如：
->
+>```
+> 
+> 不允许，会抛 NullPointerException。核心原因是并发语义容易产生歧义。例如：
+> 
 > ```java
-> V value = map.get(key);
+>V value = map.get(key);
 > ```
 >
 > 返回 null。如果 ConcurrentHashMap 允许 null value，你无法可靠判断：
 >
 > ```
-> 情况 1：这个 key 根本不存在
+>情况 1：这个 key 根本不存在
 > 情况 2：这个 key 存在，但 value 本来就是 null
 > ```
->
-> 单线程 HashMap 还可以通过 `map.containsKey(key)` 继续判断。但并发情况下：
->
-> ```
+> 
+>单线程 HashMap 还可以通过 `map.containsKey(key)` 继续判断。但并发情况下：
+> 
+>```
 > 线程 A：get(key) → null
 > 线程 B：删除 / 插入 key
 > 线程 A：containsKey(key)
@@ -1597,8 +1307,6 @@ nextTable
 
 因此扩容过程中并不是整个 ConcurrentHashMap 停下来全部扩完后，再继续提供服务。而是允许扩容和部分正常访问并发进行。
 
-这是 ConcurrentHashMap 设计中非常重要的一点。
-
 **树化**
 
 和 HashMap 类似，当某个桶冲突严重时，链表达到树化条件，则将链表转换为红黑树。相关阈值同样包括：`TREEIFY_THRESHOLD = 8` 和 `MIN_TREEIFY_CAPACITY = 64`。也就是说通常需要 `桶节点数量达到树化阈值 + table 容量至少 64`，否则优先扩容。
@@ -1640,8 +1348,6 @@ table[index]
           老旧方案        现代并发方案
 ```
 
-
-
 ## 各集合的有序、排序、重复
 
 “有序”通常指：是否保留某种稳定的遍历顺序，例如插入顺序。
@@ -1663,8 +1369,6 @@ table[index]
 所以不要笼统地说 TreeSet 是“有序的”。更准确的是 TreeSet 按比较规则维护排序顺序。
 
 ## Collection 与 Collections
-
-这是高频面试题。
 
 `Collection`：java.util.Collection，是集合体系的顶层接口之一。
 
@@ -1697,11 +1401,8 @@ Collections.min(list);
 所以：
 
 ```
-Collection
-→ 接口
-
-Collections
-→ 工具类
+Collection → 接口
+Collections → 工具类
 ```
 
 ## Iterable 和 Iterator

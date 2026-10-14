@@ -2481,6 +2481,8 @@ Java 中的注解原理
 
 \- Lambda   - Stream   - Optional   - 函数式接口
 
+常用的函数式接口（Function、Consumer、Predicate、Runnable）
+
 1. 元空间替代了永久代，永久代回收效率太低，加上 HotSpot 要和 JRockit 合并，JRockit 压根就没有永久代，所以干脆去掉了。
 2. Lambda 表达式，用 `(参数) -> 表达式` 语法实现代码块传递，告别匿名内部类的冗长写法。
 3. 函数式接口，只有一个抽象方法的接口，比如：`Predicate`、`Function`、`Consumer` 是 Lambda 的载体。

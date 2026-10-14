@@ -2,6 +2,49 @@
 title: mysql 代码题
 ---
 
+## 一些语法
+
+**某打车公司要将驾驶里程（`drivedistanced`）超过 5000 里的司机信息转存到一张称为 `seniordrivers` 的表中，他们的详细情况被记录在表 `drivers` 中，正确的 sql 语句为**：
+
+```sql
+SELECT * INTO seniordrivers FROM drivers WHERE drivedistanced >= 5000
+```
+
+涉及的语法：
+
+`SELECT ... INTO` 语句：从一张表中选取数据，自动创建新表并将数据插入其中，常用于备份或存档。
+
+```sql
+SELECT * INTO 新表名 FROM 原表名 WHERE 条件;
+```
+
+与 `INSERT INTO ... SELECT` 的区别：前者 `SELECT ... INTO` 是目标表不存在，自动创建表；后者 `INSERT INTO ... SELECT` 是目标表存在，追加数据。
+
+```sql
+INSERT INTO 目标表 SELECT * FROM 原表名 WHERE 条件;
+```
+
+**SELECT CONV('5F',16,3); 是啥意思**：将十六进制的 5F 转为三进制
+
+```
+// 十六进制 → 十进制
+5 × 16^{1} + F × 16^{0} = 5 × 16 + 15 × 1 = 95
+
+// 十进制 → 三进制
+95 ÷ 3 = 31 余 2
+31 ÷ 3 = 10 余 1
+10 ÷ 3 =  3 余 1
+ 3 ÷ 3 =  1 余 0
+ 1 ÷ 3 =  0 余 1
+∴ 三进制为 10112
+```
+
+
+
+
+
+
+
 ## 高频题
 
 建表 sql 和各个表对应的数据：
@@ -777,7 +820,7 @@ SELECT
     amount,
     AVG(amount) OVER (
         ORDER BY sale_date
-        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
     ) AS avg_sales_to_date
 FROM daily_sales;
 
