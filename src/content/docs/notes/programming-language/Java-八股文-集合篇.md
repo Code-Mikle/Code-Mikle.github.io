@@ -52,7 +52,7 @@ List
 
 #### ArrayList
 
-`ArrayList` 底层基于动态数组实现，支持按下标快速随机访问，并在容量不足时自动扩容。
+ArrayList 底层基于动态数组（`Object[]`）实现，支持自动扩容、随机访问，但中间插入和删除元素效率较低。
 
 特点：查询快增删慢，线程不安全，可以存 null。
 
@@ -71,7 +71,6 @@ private int size; // 当前实际存放了多少个元素
 
 ```java
 ArrayList<String> list = new ArrayList<>();
-
 list.add("A");
 ...
 ```
@@ -91,7 +90,7 @@ capacity → 底层数组容量
 add(element)，检查底层数组容量够不够
 ↓
 够，则 elementData[size] = element
-不够，先扩容，再插入
+不够，先扩容（1.5倍），再插入
 ↓
 size++
 ```
@@ -1005,9 +1004,7 @@ val   → volatile
 next  → volatile
 ```
 
-用于保证一定程度的内存可见性。
-
-但要注意 ConcurrentHashMap 的线程安全并不是简单靠 volatile 实现的。真正核心是：CAS + synchronized + volatile + 协作式扩容。
+用于保证一定程度的内存可见性。但要注意 ConcurrentHashMap 的线程安全并不是简单靠 volatile 实现的。真正核心是：CAS + synchronized + volatile + 协作式扩容。
 
 **CAS**
 

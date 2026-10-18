@@ -6,6 +6,108 @@ title: 设计模式 八股文
 
 ## 创建者模式
 
+### 单例模式
+
+保证一个类在 JVM 中只有一个实例，并提供全局访问入口。
+
+单例模式主要有三个特点：
+
+1. 构造方法私有化：防止外部通过 `new` 创建对象。
+2. 类内部持有唯一实例：由类自身负责创建和管理。
+3. 提供公共访问方法：通常通过 `getInstance()` 获取实例。
+
+注意：严格来说，单例通常是在一个类加载器的作用范围内保证唯一，并不天然保证整个 JVM 绝对唯一。
+
+**常见实现方式**
+
+1. 饿汉式
+
+   类加载初始化时就创建对象。
+
+   ```java
+   public class Singleton {
+   
+       private static final Singleton INSTANCE = new Singleton();
+   
+       private Singleton() {}
+   
+       public static Singleton getInstance() {
+           return INSTANCE;
+       }
+   }
+   ```
+
+   优点： 实现简单，天然线程安全。
+
+   缺点： 无论是否使用，都会提前创建对象。
+
+2. 懒汉式（双重检查锁 DCL）
+
+   第一次调用 `getInstance()` 时才创建对象。
+
+   ```java
+   public class Singleton {
+   
+       private static volatile Singleton instance;
+   
+       private Singleton() {}
+   
+       public static Singleton getInstance() {
+           if (instance == null) {
+               synchronized (Singleton.class) {
+                   if (instance == null) {
+                       instance = new Singleton();
+                   }
+               }
+           }
+           return instance;
+       }
+   }
+   ```
+
+   这里有三个关键点：
+
+   - 第一次判空：实例已经创建后，不再进入同步块，同时也避免每次获取实例都加锁，提高性能。
+   - 第二次判空：防止多个线程先后进入同步代码块时重复创建实例。
+   - volatile：保证可见性，并禁止关键的指令重排序，防止其他线程获取未正确初始化的对象。
+
+3. 静态内部类（推荐）
+
+   ```java
+   public class Singleton {
+   
+       private Singleton() {}
+   
+       private static class Holder {
+           private static final Singleton INSTANCE = new Singleton();
+       }
+   
+       public static Singleton getInstance() {
+           return Holder.INSTANCE;
+       }
+   }
+   ```
+
+   优点：
+
+   - 懒加载：外部类加载时不会加载内部类，只有调用 `getInstance()` 时才触发内部类初始化。
+   - 线程安全：利用 JVM 类初始化机制保证。
+   - 无须显式加锁，性能较好。
+
+4. 枚举单例
+
+   ```java
+   public enum Singleton {
+       INSTANCE;
+   
+       public void doSomething() {
+           System.out.println("执行方法");
+       }
+   }
+   ```
+
+   优点：实现简单，线程安全，并且天然防止常规反射创建新实例和反序列化破坏单例。
+
 
 
 ## 结构型模式

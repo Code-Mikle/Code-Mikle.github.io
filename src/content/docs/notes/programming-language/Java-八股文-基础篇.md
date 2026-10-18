@@ -362,15 +362,7 @@ String a = "hello";
 String b = "hello";
 ```
 
-`a` 和 `b` 可以共同指向字符串常量池中的同一个 `"hello"` 对象：
-
-```
-a ──┐
-    ├──> "hello"
-b ──┘
-```
-
-如果 `String` 可以修改 `a 修改成 "world"`，那么 `b` 看到的内容也可能被改变，这显然不可接受。所以常量池对象能够安全共享，一个重要前提就是 “String 不可变”。
+`a` 和 `b` 可以共同指向字符串常量池中的同一个 `"hello"` 对象。如果 `String` 可以修改 `a` 修改成 `"world"`，那么 `b` 看到的内容也可能被改变，这显然不可接受。所以常量池对象能够安全共享，一个重要前提就是 “String 不可变”。
 
 **第二，保证线程安全。**
 
@@ -382,7 +374,7 @@ String s = "hello";
 
 因为没有线程能够修改 `s` 所引用 String 对象的内部内容，所以不需要额外加锁。
 
-**第三，适合作为 HashMap 的 key。**例如：
+**第三，适合作为 HashMap 的 key。**
 
 ```java
 Map<String, Object> map = new HashMap<>();
@@ -413,15 +405,7 @@ String b = "hello";
 
 第一次执行：`String a = "hello";`，JVM 会先检查字符串常量池中是否存在 `"hello"`。如果不存在，然后把 `a ─────> "hello"` 加入常量池。
 
-第二次：`String b = "hello";`，发现常量池已经存在 `"hello"`，直接复用：
-
-```
-a ──┐
-    ├──> "hello"
-b ──┘
-```
-
-因此 `System.out.println(a == b);` 结果是 `true`。因为 `a` 和 `b` 指向同一个对象。
+第二次：`String b = "hello";`，发现常量池已经存在 `"hello"`，直接复用。因此 `System.out.println(a == b);` 结果是 `true`。因为 `a` 和 `b` 指向同一个对象。因此，此时只会在堆里创建一个 String 对象，内容指向常量池。
 
 ### new String() 的区别
 
@@ -432,17 +416,7 @@ String a = "hello";
 String b = new String("hello");
 ```
 
-这时候执行 `a == b` 的结果是 `false`。因为 `a` 指向字符串常量池，而 `new String("hello")` 会显式创建一个新的 String 对象：
-
-```
-Heap
-
-String("hello")
-     ↑
-     b
-```
-
-所以 a 指向的是常量池中的 `"hello"`，b 指向的是 new 出来的 String 对象。但是它们的内容相同，因此 `a.equals(b)` 返回 `true`，所以这里必须区分：
+这时候执行 `a == b` 的结果是 `false`。因为 `a` 指向字符串常量池，而 `new String("hello")` 会显式创建一个新的 String 对象。所以 a 指向的是常量池中的 `"hello"`，b 指向的是 new 出来的 String 对象。但是它们的内容相同，因此 `a.equals(b)` 返回 `true`，所以这里必须区分：
 
 ```
 == 比较引用是否指向同一个对象
@@ -452,8 +426,6 @@ equals() 比较字符串内容是否相同
 > 注：`Object` 默认的 `equals()` 本质上仍然是比较引用。但 `String` 重写了 `equals()` 方法。因此实际开发中，比较字符串内容应该使用 `equals()`，不要使用 `==`。
 
 **new String("abc") 创建几个对象？**
-
-例如：
 
 ```java
 String s = new String("abc");
@@ -465,9 +437,7 @@ String s = new String("abc");
 
 ### intern() 方法
 
-`String.intern()` 的作用可以理解为获取字符串常量池中与当前字符串内容相同的字符串引用。
-
-例如：
+`String.intern()` 的作用可以理解为获取字符串常量池中与当前字符串内容相同的字符串引用。例如：
 
 ```java
 String a = new String("hello");
@@ -538,6 +508,12 @@ StringBuffer 和 StringBuilder 都是可变的，底层用一个可扩容的数�
 一个类可以同时继承抽象类和实现接口吗？
 
 可以。Java 允许一个类继承一个抽象类的同时实现多个接口。这也是 Java 解决单继承限制的常用手段，核心代码复用放抽象类里，额外的能力通过接口来补充。
+
+面向对象的三大特性：
+
+- 封装：将对象的属性和方法封装在类中，隐藏内部实现细节，通过公共方法对外提供访问。
+- 继承：子类通过 `extends` 继承父类的属性和方法。
+- 多态：同一个方法调用，根据对象实际类型表现出不同的行为。分为编译时多态（方法重载）和运行时多态（方法重写）。
 
 ### 封装（Encapsulation）
 
@@ -644,22 +620,17 @@ animal.speak();
    抽象类可以有抽象方法（定义规范，子类实现），也可以有普通方法（提供公共实现，子类复用）。有抽象方法的类必须是抽象类，抽象类不一定有抽象方法。
 
    > 即使没有写抽象方法，该类也可以声明为 `abstract`，目的是为了不让外部直接创建这个类的对象。
-   >
-   > 抽象方法不可以是 `private`、`static` 或 `final`，因为抽象方法的目的就是让子类重写。
-
+   >抽象方法不可以是 `private`、`static` 或 `final`，因为抽象方法的目的就是让子类重写。
+   
 5. 继承
 
    一个子类只能继承一个直接父类，无论这个父类是不是抽象类。
-
    如果该子类，把父类的所有抽象方法都实现了，那该子类就可以是普通类。
-
    如果该子类，只实现了父类一部分的抽象方法，那该子类就还得声明为抽象类。
 
 #### 接口（Interface）
 
-接口主要解决的问题是：一批可能完全不同的类，需要遵守相同的一套行为规范。
-
-也即，接口主要用来定义某一类对象应该具备什么能力。例如：
+接口主要解决的问题是：一批可能完全不同的类，需要遵守相同的一套行为规范。也即，接口主要用来定义某一类对象应该具备什么能力。例如：
 
 ```java
 public interface Flyable {
@@ -796,21 +767,13 @@ class Bird extends Animal
 
 1. 设计动机
 
-   接口的涉及是自上而下的。我们知晓某一行为，于是基于这些行为约束定义了接口，一些类需要有这些行为，因此实现对应的接口。
+   接口的设计是自上而下的。我们知晓某一行为，于是基于这些行为约束定义了接口，一些类需要有这些行为，因此实现对应的接口。
 
-   抽象类的涉及是自下而上的。我们写了很多类，发现它们之间有共性，有很多代码可以复用。因此将公共逻辑封装成一个抽象类，减少代码冗余。
+   抽象类的设计是自下而上的。我们写了很多类，发现它们之间有共性，有很多代码可以复用。因此将公共逻辑封装成一个抽象类，减少代码冗余。
 
 2. 方法实现
 
    接口中的方法默认是 `public abstract`，但在 Java 8 之后可以设置 `default` 方法和静态方法。Java 9 之后可以设置 `private` 方法。抽象类可以包含 `abstract` 方法和具体方法，允许子类继承并重写抽象类中的方法实现。
-
-   > Java 8 接口引入 `default` 目的是：
-   >
-   > 以前，给接口增加一个新方法，所有实现类都得改代码补上实现，维护成本很高。有了 default 后，接口可以提供默认实现，老代码不用动就能兼容新方法。
-   >
-   > Java 9 接口引入 `private` 目的是：
-   >
-   > 私有方法主要是解决代码复用问题。如果多个 default 方法有重复逻辑，以前只能复制粘贴，现在可以抽到私有方法里统一调用。 
 
 3. 构造函数和成员变量
 
@@ -1144,11 +1107,7 @@ Animal animal = new Animal() {
 
 ## Object
 
-> `Object` 是 Java 所有类的根类，所有引用类型最终都直接或间接继承 Object。它定义了一些所有对象共有的基础能力，例如 `getClass()` 获取运行时类型，`equals()` 和 `hashCode()` 负责对象相等性和哈希语义，`toString()` 返回对象的字符串描述，`clone()` 用于对象复制，以及 `wait()`、`notify()`、`notifyAll()` 用于基于对象 Monitor 的线程通信。其中 Object 默认的 `equals()` 本质上使用 `==` 比较对象引用，如果业务上需要按内容判断相等，就需要重写 equals，并且必须同时保证相等对象拥有相同的 hashCode。
-
-Object 类是 Java 中所有类的根类。除了基本类型，所有类都继承自它。
-
-它定义的方法可以分成三大类：对象通用操作、线程操作、对象声明周期。
+Object 类是 Java 中所有类的根类。除了基本类型，所有类都继承自它。它定义的方法可以分成三大类：对象通用操作、线程操作、对象声明周期。
 
 对象通用操作：
 
@@ -1159,6 +1118,8 @@ Object 类是 Java 中所有类的根类。除了基本类型，所有类都继�
    Object 默认实现产生的字符串大致是 `类的全限定名@哈希值的十六进制表示`，例如：`com.demo.User@7a81197d`。一般都会重写该方法。
 
 3. `equals()` Object 默认的 equals 比较两个引用是否指向同一个对象。因此一般都会重写这个类，以比较属性内容。
+
+   > `equals()` 默认是 `==`，即比较值/引用地址
 
    关于重写 `equals()` 需要满足以下几个原则：
 
@@ -1178,13 +1139,11 @@ Object 类是 Java 中所有类的根类。除了基本类型，所有类都继�
 
    - 传递性
 
-     如果：
-
      ```java
-     x.equals(y) == true
+   x.equals(y) == true
      y.equals(z) == true
      ```
-
+     
      那么，`x.equals(z) == true`。
 
    - 一致性
@@ -1704,16 +1663,17 @@ Throwable
 ├── Error
 │
 └── Exception
-    ├── RuntimeException
+    ├── RuntimeException（Unchecked Exception）
     │   ├── NullPointerException
     │   ├── ArithmeticException
     │   ├── ClassCastException
     │   ├── IndexOutOfBoundsException
     │   └── IllegalArgumentException
     │
-    └── 其他 Exception
+    └── 其他 Exception（Checked Exception）
         ├── IOException
         ├── SQLException
+        ├── ParseException
         └── ClassNotFoundException
 ```
 
