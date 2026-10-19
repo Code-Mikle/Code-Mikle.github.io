@@ -91,24 +91,9 @@ String 最大能存 512 MB，这是源码中写死的。
 
 ### ZSet 的原理
 
-Redis 的 ZSet（Sorted Set，有序集合）可以理解成 Set + Score 排序。每个元素不能重复，但每个元素都会绑定一个 `score`：
+ZSet（Sorted Set，有序集合）是一种按照 `score`（分数）排序的数据结构，元素 `member` 唯一，但 `score` 可以重复。
 
-```
-member      score
-Tom         100
-Jack        80
-Mike        120
-```
-
-Redis 会按照 `score` 排序，所以最终：
-
-```
-Jack   80
-Tom    100
-Mike   120
-```
-
-ZSet 的底层实现主要分两种情况：
+底层实现主要分两种情况：
 
 ```
 数据量较小 → listpack

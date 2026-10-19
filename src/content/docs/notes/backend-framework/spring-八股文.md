@@ -473,69 +473,35 @@ Spring 在创建 BeanA 的时候，BeanA 依赖 BeanB 的创建，BeanB 同时�
 
 ```
 1. Spring 开始创建 A。
-
 2. 实例化原始 A，此时 A 的属性还没有注入。
-
 3. 将“获取 A 早期引用的 ObjectFactory”放入三级缓存。
-
 4. A 进行属性注入，发现依赖 B，于是开始创建 B。
-
 5. 实例化原始 B。
-
 6. 将“获取 B 早期引用的 ObjectFactory”放入三级缓存。
-
 7. B 进行属性注入，发现依赖 A。
-
 8. 查找 A：
    一级缓存没有；
    二级缓存没有；
    三级缓存找到 A 的 ObjectFactory。
-
-9. 调用 ObjectFactory 获取 A 的早期引用。
-   该引用可能是原始 A，也可能是 A 的早期代理。
-
-10. 将 A 的早期引用放入二级缓存，
-    并删除三级缓存中 A 的 ObjectFactory。
-
+9. 调用 ObjectFactory 获取 A 的早期引用。该引用可能是原始 A，也可能是 A 的早期代理。
+10. 将 A 的早期引用放入二级缓存，并删除三级缓存中 A 的 ObjectFactory。
 11. 将 A 的早期引用注入 B。
-
-12. B 完成初始化和后置处理，
-    最终放入一级缓存，并清理 B 的二、三级缓存记录。
-
-13. 回到 A 的创建流程，
-    将一级缓存中完整的 B 注入 A。
-
-14. A 完成初始化和后置处理，
-    最终引用放入一级缓存，
-    并清理 A 的二、三级缓存记录。
+12. B 完成初始化和后置处理，最终放入一级缓存，并清理 B 的二、三级缓存记录。
+13. 回到 A 的创建流程，将一级缓存中完整的 B 注入 A。
+14. A 完成初始化和后置处理，最终引用放入一级缓存，并清理 A 的二、三级缓存记录。
 ```
 
 Spring 内部通常用三个缓存管理单例 Bean：
 
 ```
-一级缓存 singletonObjects
-保存已经完整初始化的、可以直接用的 Bean
-
-二级缓存 earlySingletonObjects
-保存提前暴露（即半成品，已经实例化但没填充属性）的 Bean 引用
-
-三级缓存 singletonFactories
-保存能够生成早期 Bean 引用的 ObjectFactory（注： Bean 本身，而是一个能够生产 Bean 的工厂）
+一级缓存 singletonObjects - 保存已经完整初始化的、可以直接用的 Bean
+二级缓存 earlySingletonObjects - 保存提前暴露（即半成品，已经实例化但没填充属性）的 Bean 引用
+三级缓存 singletonFactories - 保存能够生成早期 Bean 引用的 ObjectFactory（注：Bean 本身，而是一个能够生产 Bean 的工厂）
 ```
 
 Spring 源码中的 `DefaultSingletonBeanRegistry` 确实维护了这三个 Map，并通过 `singletonFactories` 和 `earlySingletonObjects` 获取正在创建中的单例对象。
 
-简单理解：
-
-```
-A 还没完全创建好
-    ↓
-Spring 先把 A 的“半成品引用”提供给 B
-    ↓
-B 创建完成
-    ↓
-再把 B 注入 A
-```
+简单理解：A 还没完全创建好，Spring 先把 A 的半成品引用提供给 B，B 创建完成，再把 B 注入 A。
 
 注意⚠️⚠️⚠️：对于**构造器循环依赖**无法这样解决。
 
@@ -620,7 +586,6 @@ Spring 使用三级缓存，主要是为了在发生循环依赖时，能够延�
 ```java
 @Service
 public class AService {
-
     @Transactional
     public void execute() {
     }
@@ -641,7 +606,6 @@ A 的代理对象
 
 ```
 B 中注入的是：原始 A
-
 Spring 容器最终保存的是：A 的代理对象
 ```
 
@@ -743,14 +707,13 @@ Bean 可以使用
 
    ```java
    @Service
-   public class UserService {
-   }
+   public class UserService {...}
    ```
-
+   
    此时 Spring 通常还没有创建 `UserService` 对象，而是先生成一个 `BeanDefinition`。
-
+   
    `BeanDefinition` 可以理解为 Bean 的“创建说明书”，里面记录：
-
+   
    - Bean 对应的类
    - Bean 名称
    - Bean 作用域
@@ -759,14 +722,14 @@ Bean 可以使用
    - 销毁方法
    - 构造参数
    - 依赖关系
-
+   
    因此：
-
+   
    ```
    BeanDefinition 不是 Bean 对象
    BeanDefinition 是描述如何创建 Bean 的元数据
    ```
-
+   
 2. 实例化 Bean
 
    Spring 根据 `BeanDefinition` 创建 Bean 对象。例如：
@@ -1057,7 +1020,7 @@ websocket：一个 WebSocket 会话一个实例  -  适合：WebSocket 通信场
 
 ## Spring 的主要模块
 
-Spring 主要由以下模块组成：
+Spring 主要由以下模块组成： 
 
 1. 核心容器 Core Container
     负责创建和管理 Bean，实现 IoC、DI 和 Bean 生命周期管理。主要包括 `spring-core`、`spring-beans`、`spring-context`。
