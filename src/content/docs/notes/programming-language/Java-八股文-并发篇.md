@@ -93,6 +93,8 @@ public class Main {
 }
 ```
 
+注意：Thread 类实现了 Runnable 接口
+
 第二种，实现 `Runnable` 接口：
 
 ```java

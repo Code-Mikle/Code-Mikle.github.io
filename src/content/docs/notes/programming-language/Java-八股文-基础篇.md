@@ -298,22 +298,21 @@ String c = "helloworld";
 这里 `b == c` 通常是 `false`。因为 `a` 是变量，拼接需要在运行期完成。
 
 > 频繁拼接为什么不建议使用 String？
->
-> 因为 String 是不可变对象。比如：
->
-> ```java
+>因为 String 是不可变对象。比如：
+> 
+>```java
 > String s = "";
 > for (int i = 0; i < 10000; i++) { s += i; }
 > ```
->
-> 每一次 `s += i;` 都可能产生新的字符串对象。会创建大量临时对象，导致：内存开销、GC 压力、性能下降等。所以频繁拼接字符串应该使用 `StringBuilder`，例如：
->
-> ```java
+> 
+>每一次 `s += i;` 都可能产生新的字符串对象。会创建大量临时对象，导致：内存开销、GC 压力、性能下降等。所以频繁拼接字符串应该使用 `StringBuilder`，例如：
+> 
+>```java
 > StringBuilder sb = new StringBuilder();
 > 
 > for (int i = 0; i < 10000; i++) {
->       sb.append(i);
-> }
+>    sb.append(i);
+>    }
 > 
 > String result = sb.toString();
 > ```
@@ -636,22 +635,16 @@ animal.speak();
 public interface Flyable {
     void fly();
 }
-```
 
-实现类：
-
-```java
+// 实现类
 public class Bird implements Flyable {
     @Override
     public void fly() {
         System.out.println("鸟在飞");
     }
 }
-```
 
-使用：
-
-```java
+// 使用
 Flyable flyable = new Bird();
 flyable.fly();
 ```
@@ -746,22 +739,10 @@ Closeable → 可以关闭
 例如：
 
 ```java
-class Bird extends Animal
-        implements Flyable, Runnable {
-}
+class Bird extends Animal implements Flyable, Runnable {...}
 ```
 
-一个 Bird：
-
-```
-是什么？→ Animal
-
-具备什么能力？
-→ Flyable
-→ Runnable
-```
-
-这正好体现抽象类和接口的分工。
+表示一个 Bird 类属于 Animal 类，具备 Flyable、Runnable 能力。这正好体现抽象类和接口的分工。
 
 #### 接口与抽象类的区别
 
@@ -1321,7 +1302,7 @@ public <T> T getFirst(T[] array) {
 }
 ```
 
-注意 `<T>` 必须写在返回类型前面。结构是：
+注意 `<T>` 必须写在返回类型前面（只有当 `getFirst()` 是类方法时且类上 `public class MyClass<T>` 已经声明过了，那么可以省略）。结构是：
 
 ```java
 public <T> T getFirst(T[] array)
@@ -2864,6 +2845,10 @@ Channel 是 Java NIO 里的核心组件，支持双向传输，即一个通道�
 ### **Selector**
 
 Selector 是 Java NIO 里实现 I/O 多路复用的核心组件，一个线程通过 Selector 就能同时监听成百上千个 Channel 的读写事件，不用给每个连接开一个线程。
+
+## JDBC
+
+### ResultSet
 
 
 

@@ -11,7 +11,7 @@ title: Spring 八股文
 ```
 执行 main()
    ↓
-SpringApplication.run()
+SpringApplication.run() 这里会推断应用类型，是 Web 还是普通应用
    ↓
 准备环境和配置
    ↓
@@ -279,6 +279,25 @@ SpringApplication.run()
 总结就是：
 
 Spring Boot 从 `SpringApplication.run()` 开始，先读取配置并创建 `ApplicationContext`，然后扫描配置类、组件和自动配置类，将它们注册为 `BeanDefinition`。接着调用 `refresh()` 刷新容器，先执行 `BeanFactoryPostProcessor` 完善 BeanDefinition，再注册 `BeanPostProcessor`，然后创建 Web 服务器并实例化所有非懒加载单例 Bean，完成依赖注入、初始化和 AOP 代理。最后发布容器刷新事件，执行 `ApplicationRunner` 和 `CommandLineRunner`，应用启动完成。
+
+## Spring Boot 的启动流程
+
+**第一阶段：准备工作（new SpringApplication）**
+
+1. 确定应用类型：Spring Boot 会自动判断当前是 Web 应用（Servlet）、响应式应用（Reactive），还是普通应用。
+2. 加载初始化器和监听器：利用 SPI 机制（读取 spring.factories），把所有需要用到的初始化器和监听器都找出来存好，随时待命。
+
+**第二阶段：正式启动（run 方法）**
+
+1. 准备环境（Environment）：先把配置文件 application.yml、环境变量、命令行参数都加载好，组成一个环境对象。
+2. 创建容器（ApplicationContext）：根据第一步确定的类型，创建一个空的 Spring IOC 容器。
+3. 刷新容器（Refresh Context）：这是最重要的一步。Spring 会解析 `@SpringBootApplication`，扫描所有的 Bean，执行自动配置（AutoConfiguration），把所有组件注入到容器里。注意：如果是 Web 应用，内嵌的 Tomcat 就是在这个环节（OnRefresh 方法）启动的。
+4. 收尾工作：容器刷新完成后，发布启动完成时间，通知所有监听器。
+5. 执行回调（Runners）：检查有没有实现了 `CommandLineRunner` 和 `ApplicationRunnber` 的 Bean。如果有，就执行它们的 run 方法。通常在此处写开机自启任务。
+
+
+
+
 
 ## Spring 的 DI 和 IoC 是什么？
 

@@ -39,7 +39,20 @@ Map
 
 ## Collection
 
-`Collection<E>` 表示一组元素。主要有三个子接口：`List`、`Set`、`Queue`。
+`Collection<E>` 表示一组元素，主要有三个子接口：`List`、`Set`、`Queue`。
+
+以及两个基本方法：1）add 用于向集合中添加元素；2）iterator 用于返回一个实现了 Iterator 接口的对象，可以使用这个迭代器依次访问集合中的元素。
+
+### 迭代器-Iterator
+
+迭代器（Iterator）是 Java 集合框架中的一种机制，是一种用于遍历集合（如列表、集合和映射等）的接口。它提供了一种统一的方式来访问集合中的元素，而不需要了解底层集合的具体实现细节。
+
+最常用的方法是：
+
+- `next()`：返回迭代器的下一个元素，并将迭代器的指针移到下一个位置。注意，如果到达了集合的末尾，next 方法将抛出一个 NoSuchElementException。因此，需要在 next 之前调用 hasNext 方法。
+- `hasNext()`：用于判断集合中是否还有下一个元素可以访问。
+- `remove()`：从集合中删除迭代器最后访问的元素（即上次调用 next 方法时返回的元素）。
+- `forEachRemaining(element -> do something with element)`：可以传入一个 lambda 表达式，对每一个元素进行处理。
 
 ### List
 
@@ -133,7 +146,7 @@ lastIndexOf
 
 ##### 扩容机制
 
-下述方式可以指定初始容量：
+下述方式可以指定初始容量（默认容量是 10）：
 
 ```java
 ArrayList<String> list = new ArrayList<>(100);
@@ -158,6 +171,22 @@ newCapacity = oldCapacity + (oldCapacity >> 1);
 3. elementData 指向新数组
 4. 把新元素放进去
 ```
+
+##### 扩展 API
+
+1. `paralellStream()`
+
+   ```java
+   List<Integer> list = Arrays.asList(1, 2, 3);
+   Integer sum = list.parallelStream().reduce(5, Integer::sum); // 21
+   ```
+
+   - `parallelStream()` 创建并行流，允许多个线程并行处理数据
+   - `reduce()` 归约操作，将多个元素合并成一个结果
+   - `5` 初始值
+   - `Integer::sum` 执行求和操作
+
+2. 
 
 #### LinkedList
 
@@ -322,7 +351,9 @@ new TreeSet<>(Comparator.comparing(User::getAge));
 
 ### Queue
 
-`Queue` 表示队列。
+`Queue` 表示队列的接口。
+
+队列通常有两种实现方式：一种是使用循环数组；另一种是使用链表。
 
 最典型的是 FIFO（First In First Out，先进先出）。
 

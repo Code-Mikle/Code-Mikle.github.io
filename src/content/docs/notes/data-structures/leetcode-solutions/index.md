@@ -4,6 +4,45 @@ title: 算法题
 
 
 
+
+
+
+
+约瑟夫环问题
+
+```java
+import java.util.ArrayList;
+import java.util.Scanner;
+
+public class JosephRing {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("请输入人数n：");
+        int n = scanner.nextInt();
+        
+        ArrayList<Integer> people = new ArrayList<>();
+        // 初始化编号 1 ~ n
+        for (int i = 1; i <= n; i++) {
+            people.add(i);
+        }
+
+        int idx = 0;
+        while (people.size() > 1) {
+            // 报数1、2、3，报到3出局，偏移量是2
+            idx = (idx + 2) % people.size();
+            people.remove(idx);
+        }
+        System.out.println("最后留下的人编号：" + people.get(0));
+        scanner.close();
+    }
+}
+
+```
+
+
+
+
+
 猜测游戏
 
 完全平方数的长度

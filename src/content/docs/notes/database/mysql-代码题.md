@@ -41,7 +41,9 @@ INSERT INTO 目标表 SELECT * FROM 原表名 WHERE 条件;
 
 
 
+`COUNT(*)` 、`COUNT(1)` 和 `COUNT(列名)` 的区别？
 
+`COUNT(*)`（推荐使用这个） 和 `COUNT(1)` 作用一样，统计的都是行数，不管字段是不是 NULL，都会统计这条记录；`COUNT(列名)` 统计该列不为 NULL 的行数。
 
 
 
