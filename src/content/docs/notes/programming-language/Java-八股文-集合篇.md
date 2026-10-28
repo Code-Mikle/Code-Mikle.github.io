@@ -263,7 +263,7 @@ Set
 
 `HashSet` 是最常用的 Set，底层是基于 HashMap 实现的。
 
-特点：不允许重复、元素无需，查询、插入性能较好，允许 null，线程不安全。例如：
+特点：不允许重复、元素无序，查询、插入性能较好，允许 null，线程不安全。例如：
 
 ```java
 Set<String> set = new HashSet<>();
@@ -286,11 +286,9 @@ HashMap 的 Key
 
 而 HashMap 的 Key 本身不能重复，所以 HashSet 就自然实现了元素去重。因此 HashSet 的去重机制，本质上依赖 `hashCode()` 和 `equals()`。
 
-这和前面 Object 类中的这两个方法直接关联。
-
 #### LinkedHashSet
 
-`LinkedHashSet` 可以理解成：在 HashSet 基础上用链表维护元素插入顺序。
+`LinkedHashSet` 可以理解成在 HashSet 基础上用链表维护元素插入顺序。
 
 例如：
 
@@ -304,15 +302,7 @@ set.add("B");
 
 遍历时通常 `C A B`，即保持插入顺序。
 
-所以：
-
-```
-HashSet
-→ 只关注去重
-
-LinkedHashSet
-→ 去重 + 保留插入顺序
-```
+所以 HashSet 只关注去重，LinkedHashSet 关注去重和保留插入顺序。
 
 #### TreeSet
 
@@ -331,19 +321,7 @@ set.add(1);
 
 遍历结果：`1 2 5 8`
 
-排序依据可以来自：
-
-```
-Comparable
-```
-
-或者：
-
-```
-Comparator
-```
-
-例如：
+排序依据可以来自 Comparable 或者 Comparator。例如：
 
 ```
 new TreeSet<>(Comparator.comparing(User::getAge));
@@ -389,7 +367,7 @@ Queue
 
 > LinkedList 底层使用双向链表实现，每个 Node 保存元素本身以及 prev 和 next 两个引用，同时 LinkedList 维护 first、last 和 size。因为直接保存了首尾节点，所以在链表头部和尾部插入、删除可以做到 O(1)；但通过下标访问元素时，需要从 first 或 last 开始遍历，因此 get(index) 是 O(n)。指定位置插入和删除虽然修改节点引用本身是 O(1)，但如果需要先通过 index 定位节点，整体仍然是 O(n)。LinkedList 同时实现 List 和 Deque，因此既可以作为列表，也可以作为队列或双端队列使用，但它本身不是线程安全的。
 
-`LinkedList` 是 Java 集合中基于双向链表实现的 `List`，同时它还实现了 `Deque`，所以既可以当列表使用，也可以当队列、双端队列，甚至当栈使用。
+`LinkedList` 基于双向链表实现，同时它还实现了 `Deque`，所以既可以当列表使用，也可以当队列、双端队列，甚至当栈使用。
 
 `LinkedList` 底层是双向链表，随机访问慢，但在已经定位到节点的情况下，插入和删除只需要修改前后节点引用。不是线程安全的，可以存 null。
 
@@ -447,9 +425,7 @@ Collection
 
 ```java
 List<String> list = new LinkedList<>();
-
 Deque<String> deque = new LinkedList<>();
-
 Queue<String> queue = new LinkedList<>();
 ```
 
@@ -748,7 +724,7 @@ jdk 1.8 的做法是，正常情况还是链表，但链表长度达到 8 且数
 
 红黑树节点占用的内存是链表节点的两倍。TreeNode 要额外存父节点、左右节点、颜色标记这些字段，而链表节点只需要一个 next 指针。
 
-在大多数场景下，HashMap 的冲突都很少，链表长度普遍在 1-3 之间。这时候用红黑树纯粹是浪费内存，遍历三四个节点的链表，性能跟红黑树查找没什么区别。所以 JDK 的设计是，默认使用链表，只有在真正需要时才升级为红黑树。
+在大多数场景下，HashMap 的冲突都很少，链表长度普遍在 1-3 之间。这时用红黑树纯粹是浪费内存，遍历三四个节点的链表，性能跟红黑树查找没什么区别。所以 JDK 的设计是，默认使用链表，只有在真正需要时才升级为红黑树。
 
 HashMap 里的红黑树还有个特殊处理：节点同时保留了链表的 next 指针，这样在遍历整个 HashMap 时，还是可以像遍历链表一样顺序访问，不用做中序遍历。
 
